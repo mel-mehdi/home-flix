@@ -92,29 +92,29 @@ def get_embed_sources(media_type: str, identifier: str, season: Optional[int] = 
     """
     if media_type == 'movie':
         return [
-            f"https://vidfast.pro/movie/{identifier}?autoPlay=true&sub=ar",
-            f"https://vidsrc.to/embed/movie/{identifier}",
-            f"https://vidsrc.xyz/embed/movie?tmdb={identifier}",
-            f"https://vidsrc.pro/embed/movie/{identifier}",
-            f"https://www.2embed.cc/embed/{identifier}",
-            f"https://multiembed.mov/?video_id={identifier}&tmdb=1",
-            f"https://autoembed.co/movie/tmdb/{identifier}",
+            f"https://vidfast.pro/movie/{identifier}?autoPlay=true&nextButton=true&autoNext=true&sub=ar",
+            f"https://vidsrc.to/embed/movie/{identifier}?sub=ar",
+            f"https://vidsrc.xyz/embed/movie?tmdb={identifier}&sub=ar",
+            f"https://vidsrc.pro/embed/movie/{identifier}?sub=ar",
+            f"https://www.2embed.cc/embed/{identifier}?sub=ar",
+            f"https://multiembed.mov/?video_id={identifier}&tmdb=1&sub=ar",
+            f"https://autoembed.co/movie/tmdb/{identifier}?sub=ar",
         ]
     elif media_type == 'tv':
         return [
-            f"https://vidfast.pro/tv/{identifier}?sub=ar",
-            f"https://vidsrc.me/embed/tv?tmdb={identifier}",
-            f"https://vidsrc.xyz/embed/tv?tmdb={identifier}",
-            f"https://vidsrc.pro/embed/tv/{identifier}",
-            f"https://www.2embed.cc/embedtv/{identifier}",
-            f"https://vidsrc.to/embed/tv/{identifier}",
+            f"https://vidfast.pro/tv/{identifier}?autoPlay=true&nextButton=true&autoNext=true&sub=ar",
+            f"https://vidsrc.me/embed/tv?tmdb={identifier}&sub=ar",
+            f"https://vidsrc.xyz/embed/tv?tmdb={identifier}&sub=ar",
+            f"https://vidsrc.pro/embed/tv/{identifier}?sub=ar",
+            f"https://www.2embed.cc/embedtv/{identifier}?sub=ar",
+            f"https://vidsrc.to/embed/tv/{identifier}?sub=ar",
         ]
     elif media_type == 'episode' and season is not None and episode is not None:
         return [
             f"https://vidfast.pro/tv/{identifier}/{season}/{episode}?autoPlay=true&nextButton=true&autoNext=true&sub=ar",
-            f"https://www.2embed.cc/embedtv/{identifier}?s={season}&e={episode}",
-            f"https://vidsrc.to/embed/tv/{identifier}/{season}/{episode}",
-            f"https://multiembed.mov/?video_id={identifier}&tmdb=1&s={season}&e={episode}",
-            f"https://autoembed.co/tv/tmdb/{identifier}-{season}-{episode}",
+            f"https://www.2embed.cc/embedtv/{identifier}&s={season}&e={episode}&sub=ar",
+            f"https://vidsrc.to/embed/tv/{identifier}/{season}/{episode}?sub=ar",
+            f"https://multiembed.mov/?video_id={identifier}&tmdb=1&s={season}&e={episode}&sub=ar",
+            f"https://autoembed.co/tv/tmdb/{identifier}-{season}-{episode}?sub=ar",
         ]
     return []
