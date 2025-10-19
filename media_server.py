@@ -1123,10 +1123,16 @@ def api_watch_progress():
                 episode_number=episode,
                 poster_path=poster_path
             )
+            
+            # Calculate progress percentage
+            progress_percent = (progress_seconds / duration_seconds * 100) if duration_seconds > 0 else 0
+            is_completed = progress_percent >= 95
         
         return jsonify({
             'success': True,
-            'message': 'Progress saved'
+            'message': 'Progress saved',
+            'progress_percent': round(progress_percent, 2),
+            'is_completed': is_completed
         })
     except Exception as e:
         logger.error(f"Error saving watch progress: {e}")

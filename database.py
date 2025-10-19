@@ -154,7 +154,7 @@ class WatchHistory(Base):
     
     # Metadata
     poster_path = Column(String(255))
-    is_completed = Column(Boolean, default=False)  # Marked as watched if >90% complete
+    is_completed = Column(Boolean, default=False)  # Marked as watched if >95% complete
     last_watched = Column(DateTime, default=datetime.utcnow, index=True)  # Index for sorting
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

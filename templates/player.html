@@ -54,7 +54,7 @@
                     
                     <div class="episode-info">
                         <h2 class="episode-title">{{ title }}</h2>
-                        <p class="series-info">{{ type|title }}</p>
+                        <p class="series-info">{{ type|title }} <span id="watchedBadge" class="watched-badge" style="display: none;">✓ Watched</span></p>
                     </div>
                     
                     <!-- Source Switcher Button -->
@@ -254,6 +254,14 @@
                 if (Math.floor(currentProgress) % 10 === 0) {
                     saveProgress();
                 }
+                
+                // Auto-mark as watched when reaching 95% completion
+                const progressPercent = (currentProgress / videoDuration) * 100;
+                if (progressPercent >= 95 && !window.hasAutoMarkedWatched) {
+                    window.hasAutoMarkedWatched = true;
+                    // Force save progress to trigger auto-mark
+                    saveProgress();
+                }
             }, 1000);
         }
         
@@ -325,8 +333,25 @@
             .then(data => {
                 if (data.success) {
                     console.log('Progress saved:', data.progress_percent + '%');
-                    if (data.is_completed) {
-                        console.log('Marked as completed!');
+                    
+                    // Show notification when auto-marked as watched
+                    if (data.is_completed && !window.hasShownWatchedNotification) {
+                        window.hasShownWatchedNotification = true;
+                        showToast('✓ Automatically marked as watched');
+                        console.log('Auto-marked as watched!');
+                        
+                        // Show the watched badge
+                        const badge = document.getElementById('watchedBadge');
+                        if (badge) {
+                            badge.style.display = 'inline';
+                            badge.style.marginLeft = '8px';
+                            badge.style.padding = '2px 8px';
+                            badge.style.backgroundColor = '#46d369';
+                            badge.style.color = '#000';
+                            badge.style.borderRadius = '4px';
+                            badge.style.fontSize = '12px';
+                            badge.style.fontWeight = 'bold';
+                        }
                     }
                 }
             })
@@ -349,8 +374,8 @@
                         const savedProgress = data.progress;
                         const progressPercent = savedProgress.progress_percent;
                         
-                        // Only resume if not completed and progress is significant (>5% but <90%)
-                        if (!savedProgress.is_completed && progressPercent > 5 && progressPercent < 90) {
+                        // Only resume if not completed and progress is significant (>5% but <95%)
+                        if (!savedProgress.is_completed && progressPercent > 5 && progressPercent < 95) {
                             const minutes = Math.floor(savedProgress.progress_seconds / 60);
                             const seconds = savedProgress.progress_seconds % 60;
                             const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
@@ -521,11 +546,46 @@
             }
         }
 
+        // Check if item is already watched
+        async function checkWatchedStatus() {
+            try {
+                let url = `/api/watched_status/${videoType === 'episode' ? 'series' : videoType}/${imdbId}`;
+                
+                // Add episode params for series
+                if (videoType === 'episode' && typeof season !== 'undefined' && typeof episode !== 'undefined') {
+                    url += `?season=${season}&episode=${episode}`;
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success && data.is_watched) {
+                    const badge = document.getElementById('watchedBadge');
+                    if (badge) {
+                        badge.style.display = 'inline';
+                        badge.style.marginLeft = '8px';
+                        badge.style.padding = '2px 8px';
+                        badge.style.backgroundColor = '#46d369';
+                        badge.style.color = '#000';
+                        badge.style.borderRadius = '4px';
+                        badge.style.fontSize = '12px';
+                        badge.style.fontWeight = 'bold';
+                    }
+                    window.hasAutoMarkedWatched = true; // Already watched, don't show notification again
+                }
+            } catch (err) {
+                console.log('Failed to check watched status:', err);
+            }
+        }
+        
         // Start tracking when page loads
         window.addEventListener('load', () => {
             // Estimate video duration (for movies ~7200s, series ~2700s)
             videoDuration = videoType === 'movie' ? 7200 : 2700;
             creditsStart = videoDuration - 180; // Credits start 3 minutes before end
+            
+            // Check if already watched
+            checkWatchedStatus();
             
             startProgressTracking();
             
