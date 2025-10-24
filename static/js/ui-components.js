@@ -227,20 +227,75 @@ function displaySearchSuggestions(results, query) {
         const suggestionItem = document.createElement('div');
         suggestionItem.className = 'suggestion-item';
         
+        // Create poster image element
+        const posterDiv = document.createElement('div');
+        posterDiv.className = 'suggestion-poster';
+        
+        if (item.poster_url) {
+            const posterImg = document.createElement('img');
+            posterImg.src = item.poster_url;
+            posterImg.alt = item.title;
+            posterImg.className = 'suggestion-poster';
+            posterImg.onerror = function() {
+                // If image fails to load, show placeholder
+                this.style.display = 'none';
+                posterDiv.classList.add('placeholder');
+                posterDiv.textContent = item.title.charAt(0).toUpperCase();
+            };
+            posterDiv.appendChild(posterImg);
+        } else {
+            // No poster URL, show placeholder
+            posterDiv.classList.add('placeholder');
+            posterDiv.textContent = item.title.charAt(0).toUpperCase();
+        }
+        
+        // Create content container
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'suggestion-content';
+        
+        // Create header with icon and title
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'suggestion-header';
+        
         // Create icon based on type
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'suggestion-icon';
         const icon = item.type === 'movie' 
             ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 4H5a2 2 0 00-2 2v12a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 2v4M17 2v4M2 10h20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
             : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 7h-5M20 17h-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><rect x="2" y="3" width="12" height="18" rx="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        iconSpan.innerHTML = icon;
         
         // Highlight matching text
-        const title = highlightMatch(item.title, query);
-        const year = item.year ? `<span class="suggestion-year">(${item.year})</span>` : '';
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'suggestion-title';
+        titleSpan.innerHTML = highlightMatch(item.title, query);
         
-        suggestionItem.innerHTML = `
-            <span class="suggestion-icon">${icon}</span>
-            <span class="suggestion-title">${title} ${year}</span>
-            <span class="suggestion-type">${item.type}</span>
-        `;
+        headerDiv.appendChild(iconSpan);
+        headerDiv.appendChild(titleSpan);
+        
+        // Create meta info (year and type)
+        const metaDiv = document.createElement('div');
+        metaDiv.className = 'suggestion-meta';
+        
+        if (item.year) {
+            const yearSpan = document.createElement('span');
+            yearSpan.className = 'suggestion-year';
+            yearSpan.textContent = item.year;
+            metaDiv.appendChild(yearSpan);
+        }
+        
+        const typeSpan = document.createElement('span');
+        typeSpan.className = `suggestion-type ${item.type}`;
+        typeSpan.textContent = item.type;
+        metaDiv.appendChild(typeSpan);
+        
+        // Assemble content
+        contentDiv.appendChild(headerDiv);
+        contentDiv.appendChild(metaDiv);
+        
+        // Assemble suggestion item
+        suggestionItem.appendChild(posterDiv);
+        suggestionItem.appendChild(contentDiv);
         
         // Add click handler
         suggestionItem.addEventListener('click', () => {
