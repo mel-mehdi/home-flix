@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <meta name="theme-color" content="#141414">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Myflix</title>
     <link rel="stylesheet" href="/css/index.css">
@@ -26,7 +26,7 @@
                 MYFLIX
             </a>
             <nav class="main-nav">
-                <a href="/" class="nav-link">Home</a>
+                <a href="javascript:void(0)" class="nav-link active" onclick="filterByType('all')">Home</a>
                 <a href="javascript:void(0)" class="nav-link" onclick="filterByType('tv')">TV Shows</a>
                 <a href="javascript:void(0)" class="nav-link" onclick="filterByType('movie')">Movies</a>
                 <a href="javascript:void(0)" class="nav-link" onclick="showNewPopular()">New & Popular</a>
@@ -34,6 +34,33 @@
             </nav>
         </div>
         <div class="navbar-right">
+            <!-- Genre List Menu -->
+            <div class="genre-list-container">
+                <button class="genre-list-trigger" id="genreListTrigger">
+                    <span id="genreListLabel">Genres</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M7 10l5 5 5-5z" fill="currentColor"/>
+                    </svg>
+                </button>
+                <div class="genre-list-menu" id="genreListMenu">
+                    <a href="javascript:void(0)" class="genre-item active" onclick="selectGenre('all', 'All Genres')">All Genres</a>
+                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Action', 'Action')">Action</a>
+                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Comedy', 'Comedy')">Comedy</a>
+                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Drama', 'Drama')">Drama</a>
+                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Fantasy', 'Fantasy')">Fantasy</a>
+                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Horror', 'Horror')">Horror</a>
+                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Mystery', 'Mystery')">Mystery</a>
+                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Romance', 'Romance')">Romance</a>
+                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Sci-Fi', 'Sci-Fi')">Sci-Fi</a>
+                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Thriller', 'Thriller')">Thriller</a>
+                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Adventure', 'Adventure')">Adventure</a>
+                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Crime', 'Crime')">Crime</a>
+                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Animation', 'Animation')">Animation</a>
+                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Documentary', 'Documentary')">Documentary</a>
+                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Family', 'Family')">Family</a>
+                </div>
+            </div>
+            
             <div class="search-container">
                 <button class="search-toggle" onclick="toggleSearch()">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -53,7 +80,7 @@
 
     <!-- Mobile Navigation Menu -->
     <nav class="mobile-nav-menu" id="mobileNavMenu">
-        <a href="/" class="nav-link">Home</a>
+        <a href="javascript:void(0)" class="nav-link active" onclick="filterByType('all'); toggleMobileMenu();">Home</a>
         <a href="javascript:void(0)" class="nav-link" onclick="filterByType('tv'); toggleMobileMenu();">TV Shows</a>
         <a href="javascript:void(0)" class="nav-link" onclick="filterByType('movie'); toggleMobileMenu();">Movies</a>
         <a href="javascript:void(0)" class="nav-link" onclick="showNewPopular(); toggleMobileMenu();">New & Popular</a>
@@ -159,7 +186,7 @@
             <div class="row-slider">
                 <div class="slider-container" id="continue-watching-slider">
                     {% for item in continue_watching %}
-                    <div class="title-card" data-title="{{ item.title }}" data-type="{{ item.type }}" data-id="{{ item.id }}" data-tmdb-id="{{ item.tmdb_id }}">
+                    <div class="title-card" data-title="{{ item.title }}" data-type="{{ item.type }}" data-id="{{ item.id }}" data-tmdb-id="{{ item.tmdb_id }}" data-genres="{{ item.genres|join(',') if item.genres else '' }}">
                         <div class="title-card-image">
                             <span class="continue-watching-badge">Continue Watching</span>
                             {% if item.poster_url %}
@@ -218,7 +245,7 @@
             <div class="row-slider">
                 <div class="slider-container" id="trending-movies-slider">
                     {% for movie in trending_movies %}
-                    <div class="title-card" data-title="{{ movie.title }}" data-type="movie" data-id="{{ movie.imdb_id }}" data-tmdb-id="{{ movie.tmdb_id }}">
+                    <div class="title-card" data-title="{{ movie.title }}" data-type="movie" data-id="{{ movie.imdb_id }}" data-tmdb-id="{{ movie.tmdb_id }}" data-genres="{{ movie.genres|join(',') if movie.genres else '' }}">
                         <div class="title-card-image">
                             {% if movie.poster_url %}
                             <img src="{{ movie.poster_url }}" alt="{{ movie.title }}" loading="lazy">
@@ -273,7 +300,7 @@
             <div class="row-slider">
 				<div class="slider-container" id="trending-series-slider">
                     {% for show in trending_series %}
-                    <div class="title-card" data-title="{{ show.title }}" data-type="series" data-id="{{ show.imdb_id }}" data-tmdb-id="{{ show.tmdb_id }}">
+                    <div class="title-card" data-title="{{ show.title }}" data-type="series" data-id="{{ show.imdb_id }}" data-tmdb-id="{{ show.tmdb_id }}" data-genres="{{ show.genres|join(',') if show.genres else '' }}">
 						<div class="title-card-image">
                             {% if show.poster_url %}
                             <img src="{{ show.poster_url }}" alt="{{ show.title }}" loading="lazy">
@@ -327,7 +354,7 @@
 			<div class="row-slider">
 				<div class="slider-container" id="movies-slider">
 					{% for movie in movies %}
-					<div class="title-card" data-title="{{ movie.title }}" data-type="movie" data-id="{{ movie.imdb_id }}" data-tmdb-id="{{ movie.tmdb_id }}">
+					<div class="title-card" data-title="{{ movie.title }}" data-type="movie" data-id="{{ movie.imdb_id }}" data-tmdb-id="{{ movie.tmdb_id }}" data-genres="{{ movie.genres|join(',') if movie.genres else '' }}">
 						<div class="title-card-image">
 							{% if movie.poster_url %}
 							<img src="{{ movie.poster_url }}" alt="{{ movie.title }}" loading="lazy">
@@ -384,7 +411,7 @@
             <div class="row-slider">
                 <div class="slider-container" id="series-slider">
                     {% for show in series %}
-                    <div class="title-card" data-title="{{ show.title }}" data-type="series" data-id="{{ show.imdb_id }}" data-tmdb-id="{{ show.tmdb_id }}">
+                    <div class="title-card" data-title="{{ show.title }}" data-type="series" data-id="{{ show.imdb_id }}" data-tmdb-id="{{ show.tmdb_id }}" data-genres="{{ show.genres|join(',') if show.genres else '' }}">
                         <div class="title-card-image">
                             {% if show.poster_url %}
                             <img src="{{ show.poster_url }}" alt="{{ show.title }}" loading="lazy">

@@ -1262,63 +1262,96 @@ def api_watched_status(media_type, media_id):
             'is_watched': False
         }), 500
 
-
-def search_tmdb_movies(query, page=1):
-    """Search movies using TMDB API"""
+@app.route('/api/filter')
+def api_filter_content():
+    """
+    API endpoint to filter content by type and/or genre
+    Query params:
+        - type: 'movie' or 'series' (required)
+        - genre: genre name (optional, e.g., 'Action', 'Comedy')
+        - page: page number for pagination (default: 1)
+        - limit: number of items to return (default: 16)
+    """
     try:
-        url = f"{api_config.TMDB_BASE_URL}/search/movie"
-        params = {'query': query, 'page': page}
-        data = get_cached_tmdb_data(url, str(params))
-        movies = data.get('results', [])[:15]  # Limit to 15
-        filtered_movies = []
-        for movie in movies:
-            movie['tmdb_id'] = movie['id']
-            # Get IMDB ID
-            imdb_id = get_imdb_id(movie['tmdb_id'], 'movie')
-            if imdb_id:  # Only include movies with IMDB IDs
-                movie['imdb_id'] = imdb_id
-                # Build poster URL directly
-                movie['poster_url'] = f"/poster/movie/{movie['tmdb_id']}"
-                movie['backdrop_url'] = f"/backdrop/movie/{movie['tmdb_id']}" if movie.get('backdrop_path') else None
-                movie['quality'] = 'HD'  # Default
-                # Cache the poster path if available
-                if movie.get('poster_path'):
-                    cache_manager.set('posters', f"movie_{movie['tmdb_id']}", movie['poster_path'])
-                if movie.get('backdrop_path'):
-                    cache_manager.set('backdrops', f"movie_{movie['tmdb_id']}", movie['backdrop_path'])
-                filtered_movies.append(movie)
-        return filtered_movies
+        content_type = request.args.get('type', 'movie')
+        genre = request.args.get('genre', None)
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 16))
+        
+        with DatabaseService() as db_service:
+            if content_type == 'movie':
+                if genre:
+                    # Get movies filtered by genre
+                    items = db_service.get_movies_by_genre(genre, page=page, per_page=limit)
+                    total_count = db_service.get_total_movies_by_genre(genre)
+                else:
+                    # Get all movies
+                    items = db_service.get_latest_movies(page=page, per_page=limit)
+                    total_count = db_service.get_total_movies()
+                
+                # Format movie data
+                results = []
+                for movie in items:
+                    genres = movie.get('genres', [])
+                    if isinstance(genres, str):
+                        genres = genres.split(',') if genres else []
+                    
+                    results.append({
+                        'title': movie.get('title', ''),
+                        'type': 'movie',
+                        'imdb_id': movie.get('imdb_id', ''),
+                        'tmdb_id': movie.get('tmdb_id', 0),
+                        'poster_url': f"/poster/movie/{movie.get('tmdb_id')}" if movie.get('tmdb_id') else None,
+                        'quality': movie.get('quality', 'HD'),
+                        'genres': genres
+                    })
+                
+            else:  # series
+                if genre:
+                    # Get TV shows filtered by genre
+                    items = db_service.get_tvshows_by_genre(genre, page=page, per_page=limit)
+                    total_count = db_service.get_total_tvshows_by_genre(genre)
+                else:
+                    # Get all TV shows
+                    items = db_service.get_latest_tvshows(page=page, per_page=limit)
+                    total_count = db_service.get_total_tvshows()
+                
+                # Format series data
+                results = []
+                for show in items:
+                    genres = show.get('genres', [])
+                    if isinstance(genres, str):
+                        genres = genres.split(',') if genres else []
+                    
+                    results.append({
+                        'title': show.get('title', ''),
+                        'type': 'series',
+                        'imdb_id': show.get('imdb_id', ''),
+                        'tmdb_id': show.get('tmdb_id', 0),
+                        'poster_url': f"/poster/tv/{show.get('tmdb_id')}" if show.get('tmdb_id') else None,
+                        'quality': 'Series',
+                        'genres': genres
+                    })
+            
+            return jsonify({
+                'success': True,
+                'items': results,
+                'total': total_count,
+                'type': content_type,
+                'genre': genre,
+                'page': page,
+                'limit': limit,
+                'has_more': (page * limit) < total_count
+            })
+            
     except Exception as e:
-        logger.error(f" searching TMDB movies: {e}")
-        return []
-
-def search_tmdb_series(query, page=1):
-    """Search TV series using TMDB API"""
-    try:
-        url = f"{api_config.TMDB_BASE_URL}/search/tv"
-        params = {'query': query, 'page': page}
-        data = get_cached_tmdb_data(url, str(params))
-        series = data.get('results', [])[:15]  # Limit to 15
-        filtered_series = []
-        for show in series:
-            show['tmdb_id'] = show['id']
-            # Get IMDB ID
-            imdb_id = get_imdb_id(show['tmdb_id'], 'tv')
-            if imdb_id:  # Only include series with IMDB IDs
-                show['imdb_id'] = imdb_id
-                # Build poster URL directly
-                show['poster_url'] = f"/poster/tv/{show['tmdb_id']}"
-                show['backdrop_url'] = f"/backdrop/tv/{show['tmdb_id']}" if show.get('backdrop_path') else None
-                # Cache the poster path if available
-                if show.get('poster_path'):
-                    cache_manager.set('posters', f"tv_{show['tmdb_id']}", show['poster_path'])
-                if show.get('backdrop_path'):
-                    cache_manager.set('backdrops', f"tv_{show['tmdb_id']}", show['backdrop_path'])
-                filtered_series.append(show)
-        return filtered_series
-    except Exception as e:
-        logger.error(f"Error searching TMDB series: {e}")
-        return []
+        logger.error(f"Error filtering content: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'items': [],
+            'total': 0
+        }), 500
 
 if __name__ == '__main__':
     app.run(

@@ -148,6 +148,70 @@ class DatabaseService:
             .all()
         return [movie.to_dict() for movie in movies]
     
+    def get_movies_by_genre(self, genre: str, page: int = 1, per_page: int = 16) -> List[Dict[str, Any]]:
+        """
+        Get movies filtered by genre with pagination
+        
+        Args:
+            genre: Genre name to filter by
+            page: Page number (1-indexed)
+            per_page: Number of items per page
+            
+        Returns:
+            List of movie dictionaries
+        """
+        offset = (page - 1) * per_page
+        
+        # Use JSON search for genre (case-insensitive)
+        # SQLite JSON functions to search within JSON array
+        movies = self.db.query(Movie)\
+            .filter(
+                Movie.imdb_id.isnot(None),
+                Movie.genres.isnot(None)
+            )\
+            .order_by(desc(Movie.popularity))\
+            .all()
+        
+        # Filter by genre in Python (SQLite JSON queries can be tricky)
+        filtered_movies = []
+        for movie in movies:
+            if movie.genres and isinstance(movie.genres, list):
+                # Case-insensitive genre matching
+                movie_genres = [g.lower() if isinstance(g, str) else str(g).lower() for g in movie.genres]
+                if genre.lower() in movie_genres:
+                    filtered_movies.append(movie)
+        
+        # Apply pagination
+        paginated_movies = filtered_movies[offset:offset + per_page]
+        return [movie.to_dict() for movie in paginated_movies]
+    
+    def get_total_movies_by_genre(self, genre: str) -> int:
+        """
+        Get total count of movies for a specific genre
+        
+        Args:
+            genre: Genre name to count
+            
+        Returns:
+            Total count of movies with the genre
+        """
+        movies = self.db.query(Movie)\
+            .filter(
+                Movie.imdb_id.isnot(None),
+                Movie.genres.isnot(None)
+            )\
+            .all()
+        
+        # Count movies with matching genre
+        count = 0
+        for movie in movies:
+            if movie.genres and isinstance(movie.genres, list):
+                movie_genres = [g.lower() if isinstance(g, str) else str(g).lower() for g in movie.genres]
+                if genre.lower() in movie_genres:
+                    count += 1
+        
+        return count
+    
     @measure_time
     def search_movies(self, query: str, page: int = 1, per_page: int = 15) -> List[Dict[str, Any]]:
         """
@@ -272,6 +336,70 @@ class DatabaseService:
             .all()
         return [tvshow.to_dict() for tvshow in tvshows]
     
+    def get_tvshows_by_genre(self, genre: str, page: int = 1, per_page: int = 16) -> List[Dict[str, Any]]:
+        """
+        Get TV shows filtered by genre with pagination
+        
+        Args:
+            genre: Genre name to filter by
+            page: Page number (1-indexed)
+            per_page: Number of items per page
+            
+        Returns:
+            List of TV show dictionaries
+        """
+        offset = (page - 1) * per_page
+        
+        # Get all TV shows with genres
+        tvshows = self.db.query(TVShow)\
+            .filter(
+                TVShow.imdb_id.isnot(None),
+                TVShow.genres.isnot(None)
+            )\
+            .order_by(desc(TVShow.popularity))\
+            .all()
+        
+        # Filter by genre in Python (SQLite JSON queries can be tricky)
+        filtered_tvshows = []
+        for tvshow in tvshows:
+            if tvshow.genres and isinstance(tvshow.genres, list):
+                # Case-insensitive genre matching
+                tvshow_genres = [g.lower() if isinstance(g, str) else str(g).lower() for g in tvshow.genres]
+                if genre.lower() in tvshow_genres:
+                    filtered_tvshows.append(tvshow)
+        
+        # Apply pagination
+        paginated_tvshows = filtered_tvshows[offset:offset + per_page]
+        return [tvshow.to_dict() for tvshow in paginated_tvshows]
+    
+    def get_total_tvshows_by_genre(self, genre: str) -> int:
+        """
+        Get total count of TV shows for a specific genre
+        
+        Args:
+            genre: Genre name to count
+            
+        Returns:
+            Total count of TV shows with the genre
+        """
+        tvshows = self.db.query(TVShow)\
+            .filter(
+                TVShow.imdb_id.isnot(None),
+                TVShow.genres.isnot(None)
+            )\
+            .all()
+        
+        # Count TV shows with matching genre
+        count = 0
+        for tvshow in tvshows:
+            if tvshow.genres and isinstance(tvshow.genres, list):
+                tvshow_genres = [g.lower() if isinstance(g, str) else str(g).lower() for g in tvshow.genres]
+                if genre.lower() in tvshow_genres:
+                    count += 1
+        
+        return count
+    
+    @measure_time
     def search_tvshows(self, query, page=1, per_page=15):
         """Search TV shows in database using FTS for ultra-fast results"""
         offset = (page - 1) * per_page
