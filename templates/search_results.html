@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Results: {{ query }} - Homeflix</title>
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/modal.css">
+    <link rel="stylesheet" href="/css/watch-mark.css">
+</head>
+<body>
+    <!-- Netflix-style Navbar -->
+    <nav class="navbar" id="navbar">
+        <div class="navbar-left">
+            <a href="/" class="netflix-logo">HOMEFLIX</a>
+            <div class="main-nav">
+                <a href="/" class="nav-link">Home</a>
+            </div>
+        </div>
+        
+        <div class="navbar-right">
+            <!-- Search -->
+            <div class="search-container">
+                <button class="search-toggle" onclick="toggleSearch()" aria-label="Search">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <input type="text" class="search-input" id="searchInput" placeholder="Titles, people, genres" value="{{ query }}">
+                <div class="search-suggestions" id="searchSuggestions"></div>
+            </div>
+            
+            <!-- Profile Menu -->
+            <div class="profile-menu">
+                <div class="profile-avatar">
+                    <div class="avatar-icon">H</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content" style="margin-top: 100px;">
+        <div class="content-row">
+            <div class="row-header">
+                <h2 class="row-title">Search Results for "{{ query }}"</h2>
+            </div>
+            
+            {% if movies or series %}
+                <!-- Movies Section -->
+                {% if movies %}
+                <div class="content-row">
+                    <div class="row-header">
+                        <h2 class="row-title">Movies ({{ movies|length }})</h2>
+                    </div>
+                    <div class="row-slider">
+                        <div class="slider-container" id="search-movies-slider">
+                            {% for movie in movies %}
+                            <div class="title-card loaded" data-id="{{ movie.imdb_id }}" data-type="movie">
+                                <div class="title-card-image">
+                                    {% if movie.poster_url %}
+                                        <img src="{{ movie.poster_url }}" alt="{{ movie.title }}">
+                                    {% else %}
+                                        <div class="placeholder-image">{{ movie.title[0] }}</div>
+                                    {% endif %}
+                                    <div class="title-card-metadata">
+                                        <div class="metadata-top">
+                                            <button class="title-card-play-button" onclick="window.location.href='/watch/movie/{{ movie.imdb_id }}'" aria-label="Play">
+                                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M8 5v14l11-7z"/>
+                                                </svg>
+                                            </button>
+                                            <button class="title-card-add-button" onclick="toggleMyList('{{ movie.imdb_id }}', 'movie', this)" aria-label="Add to My List">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                    <path d="M12 5v14M5 12h14" stroke-width="2" stroke-linecap="round"/>
+                                                </svg>
+                                            </button>
+                                            <button class="title-card-expand-button" onclick="window.location.href='/movie/{{ movie.imdb_id }}'" aria-label="More Info">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                    <path d="M19 9l-7 7-7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div class="metadata-bottom">
+                                            <h3 class="title-card-title">{{ movie.title }}</h3>
+                                            {% if movie.genres %}
+                                            <div class="title-card-genres">
+                                                {% for genre in movie.genres[:3] %}
+                                                <span class="genre-tag">{{ genre }}</span>
+                                                {% endfor %}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Series Section -->
+                {% if series %}
+                <div class="content-row">
+                    <div class="row-header">
+                        <h2 class="row-title">TV Shows ({{ series|length }})</h2>
+                    </div>
+                    <div class="row-slider">
+                        <div class="slider-container" id="search-series-slider">
+                            {% for show in series %}
+                            <div class="title-card loaded" data-id="{{ show.imdb_id }}" data-type="series">
+                                <div class="title-card-image">
+                                    {% if show.poster_url %}
+                                        <img src="{{ show.poster_url }}" alt="{{ show.title }}">
+                                    {% else %}
+                                        <div class="placeholder-image">{{ show.title[0] }}</div>
+                                    {% endif %}
+                                    <div class="title-card-metadata">
+                                        <div class="metadata-top">
+                                            <button class="title-card-play-button" onclick="window.location.href='/watch/series/{{ show.imdb_id }}'" aria-label="Play">
+                                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M8 5v14l11-7z"/>
+                                                </svg>
+                                            </button>
+                                            <button class="title-card-add-button" onclick="toggleMyList('{{ show.imdb_id }}', 'series', this)" aria-label="Add to My List">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                    <path d="M12 5v14M5 12h14" stroke-width="2" stroke-linecap="round"/>
+                                                </svg>
+                                            </button>
+                                            <button class="title-card-expand-button" onclick="window.location.href='/series/{{ show.imdb_id }}'" aria-label="More Info">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                    <path d="M19 9l-7 7-7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div class="metadata-bottom">
+                                            <h3 class="title-card-title">{{ show.title }}</h3>
+                                            {% if show.genres %}
+                                            <div class="title-card-genres">
+                                                {% for genre in show.genres[:3] %}
+                                                <span class="genre-tag">{{ genre }}</span>
+                                                {% endfor %}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            {% else %}
+                <div class="content-row">
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <h2 style="font-size: 2em; margin-bottom: 20px;">No results found for "{{ query }}"</h2>
+                        <p style="font-size: 1.2em; color: #999; margin-bottom: 30px;">Try different keywords or browse our catalog</p>
+                        <a href="/" class="btn btn-primary" style="text-decoration: none;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+                            </svg>
+                            Back to Home
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/ui-components.js"></script>
+    <script src="/static/js/my-list.js"></script>
+    <script src="/static/js/watch-mark.js"></script>
+    <script>
+        // Initialize search functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSearch();
+            loadMyList();
+        });
+    </script>
+</body>
+</html>

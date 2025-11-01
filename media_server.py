@@ -222,6 +222,33 @@ def index():
         logger.error(f"Error in index: {e}")
         return f"Error accessing data: {e}", 500
 
+@app.route('/search')
+@measure_time
+def search():
+    """Display search results for movies and series"""
+    query = request.args.get('q', '').strip()
+    
+    if not query or len(query) < 2:
+        return redirect('/')
+    
+    try:
+        # Search database for movies and series
+        with DatabaseService() as db_service:
+            movies = db_service.search_movies(query, page=1, per_page=50)
+            series = db_service.search_tvshows(query, page=1, per_page=50)
+        
+        # Populate image caches
+        _populate_image_cache(movies, 'movie')
+        _populate_image_cache(series, 'tv')
+        
+        return render_template('search_results.html', 
+                             query=query,
+                             movies=movies, 
+                             series=series)
+    except Exception as e:
+        logger.error(f"Error in search: {e}")
+        return f"Error performing search: {e}", 500
+
 @app.route('/load_more_movies/<int:page>')
 def load_more_movies(page):
     """Load more movies for AJAX"""
@@ -797,26 +824,6 @@ def get_imdb_id(tmdb_id: int, media_type: str) -> Optional[str]:
         logger.error(f"Error getting IMDB ID for {tmdb_id}: {e}")
         return None
 
-@lru_cache(maxsize=500)
-def get_imdb_id(tmdb_id: int, media_type: str) -> Optional[str]:
-    """
-    Get IMDB ID from TMDB ID with caching
-    
-    Args:
-        tmdb_id: TMDB ID
-        media_type: 'movie' or 'tv'
-        
-    Returns:
-        IMDB ID or None if not found
-    """
-    try:
-        url = f"{api_config.TMDB_BASE_URL}/{media_type}/{tmdb_id}/external_ids"
-        data = get_cached_tmdb_data(url, "")
-        return data.get('imdb_id')
-    except Exception as e:
-        logger.error(f"Error getting IMDB ID for {tmdb_id}: {e}")
-        return None
-
 @lru_cache(maxsize=200)
 def get_movie_details(imdb_id: str) -> Optional[Dict[str, Any]]:
     """
@@ -1256,10 +1263,67 @@ def api_watched_status(media_type, media_id):
         }), 500
 
 
-if __name__ == "__main__":
+def search_tmdb_movies(query, page=1):
+    """Search movies using TMDB API"""
+    try:
+        url = f"{api_config.TMDB_BASE_URL}/search/movie"
+        params = {'query': query, 'page': page}
+        data = get_cached_tmdb_data(url, str(params))
+        movies = data.get('results', [])[:15]  # Limit to 15
+        filtered_movies = []
+        for movie in movies:
+            movie['tmdb_id'] = movie['id']
+            # Get IMDB ID
+            imdb_id = get_imdb_id(movie['tmdb_id'], 'movie')
+            if imdb_id:  # Only include movies with IMDB IDs
+                movie['imdb_id'] = imdb_id
+                # Build poster URL directly
+                movie['poster_url'] = f"/poster/movie/{movie['tmdb_id']}"
+                movie['backdrop_url'] = f"/backdrop/movie/{movie['tmdb_id']}" if movie.get('backdrop_path') else None
+                movie['quality'] = 'HD'  # Default
+                # Cache the poster path if available
+                if movie.get('poster_path'):
+                    cache_manager.set('posters', f"movie_{movie['tmdb_id']}", movie['poster_path'])
+                if movie.get('backdrop_path'):
+                    cache_manager.set('backdrops', f"movie_{movie['tmdb_id']}", movie['backdrop_path'])
+                filtered_movies.append(movie)
+        return filtered_movies
+    except Exception as e:
+        logger.error(f" searching TMDB movies: {e}")
+        return []
+
+def search_tmdb_series(query, page=1):
+    """Search TV series using TMDB API"""
+    try:
+        url = f"{api_config.TMDB_BASE_URL}/search/tv"
+        params = {'query': query, 'page': page}
+        data = get_cached_tmdb_data(url, str(params))
+        series = data.get('results', [])[:15]  # Limit to 15
+        filtered_series = []
+        for show in series:
+            show['tmdb_id'] = show['id']
+            # Get IMDB ID
+            imdb_id = get_imdb_id(show['tmdb_id'], 'tv')
+            if imdb_id:  # Only include series with IMDB IDs
+                show['imdb_id'] = imdb_id
+                # Build poster URL directly
+                show['poster_url'] = f"/poster/tv/{show['tmdb_id']}"
+                show['backdrop_url'] = f"/backdrop/tv/{show['tmdb_id']}" if show.get('backdrop_path') else None
+                # Cache the poster path if available
+                if show.get('poster_path'):
+                    cache_manager.set('posters', f"tv_{show['tmdb_id']}", show['poster_path'])
+                if show.get('backdrop_path'):
+                    cache_manager.set('backdrops', f"tv_{show['tmdb_id']}", show['backdrop_path'])
+                filtered_series.append(show)
+        return filtered_series
+    except Exception as e:
+        logger.error(f"Error searching TMDB series: {e}")
+        return []
+
+if __name__ == '__main__':
     app.run(
         host=server_config.HOST,
         port=server_config.PORT,
         debug=server_config.DEBUG,
-        threaded=server_config.THREADED
+        threaded=True
     )

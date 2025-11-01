@@ -85,19 +85,11 @@ document.addEventListener('keydown', function(event) {
 function filterContent() {
     const query = document.getElementById('searchInput').value.trim();
     if (query === '') {
-        window.location.href = '/';
         return;
     }
     
-    // Show loading state
-    const searchButton = document.querySelector('.search-toggle');
-    const originalHTML = searchButton.innerHTML;
-    searchButton.innerHTML = '<div style="width: 16px; height: 16px; border: 2px solid #fff; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>';
-    
-    // Navigate to search results
-    setTimeout(() => {
-        window.location.href = `/search?q=${encodeURIComponent(query)}`;
-    }, 500);
+    // Navigate to search results page
+    window.location.href = `/search?q=${encodeURIComponent(query)}`;
 }
 
 // Initialize search input enter key and live suggestions
