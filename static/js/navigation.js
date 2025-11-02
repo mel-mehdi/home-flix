@@ -373,7 +373,7 @@ async function fetchGenreFilteredContent(genre, page = 1, append = false) {
         const loadMoreBtn = document.getElementById('load-more-btn');
         if (loadMoreBtn) {
             loadMoreBtn.disabled = true;
-            loadMoreBtn.innerHTML = '<div class="loading-spinner small"></div> Loading...';
+            loadMoreBtn.innerHTML = 'Loading...';
         }
     }
     
@@ -564,10 +564,8 @@ function showLoadingIndicator(message) {
     indicator.innerHTML = `
         <div class="filter-indicator-content">
             <span class="filter-indicator-text">${message}</span>
-            <div class="loading-spinner"></div>
-        </div>
-    `;
-    
+			</div>
+			`;
     const heroBanner = document.querySelector('.hero-banner');
     if (heroBanner && heroBanner.nextSibling) {
         heroBanner.parentNode.insertBefore(indicator, heroBanner.nextSibling);

@@ -1262,6 +1262,34 @@ def api_watched_status(media_type, media_id):
             'is_watched': False
         }), 500
 
+@app.route('/api/clear_watch_progress', methods=['POST'])
+def api_clear_watch_progress():
+    """Clear watch progress for an item (remove from Continue Watching)"""
+    try:
+        data = request.get_json()
+        media_type = data.get('type')
+        media_id = data.get('id')
+        
+        if not all([media_type, media_id]):
+            return jsonify({
+                'success': False,
+                'error': 'Missing required fields'
+            }), 400
+        
+        with DatabaseService() as db_service:
+            success = db_service.clear_watch_progress(media_type, media_id)
+        
+        return jsonify({
+            'success': success,
+            'message': 'Watch progress cleared'
+        })
+    except Exception as e:
+        logger.error(f"Error clearing watch progress: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/filter')
 def api_filter_content():
     """

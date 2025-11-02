@@ -189,6 +189,11 @@
                     <div class="title-card" data-title="{{ item.title }}" data-type="{{ item.type }}" data-id="{{ item.id }}" data-tmdb-id="{{ item.tmdb_id }}" data-genres="{{ item.genres|join(',') if item.genres else '' }}">
                         <div class="title-card-image">
                             <span class="continue-watching-badge">Continue Watching</span>
+                            <button class="remove-from-continue-watching" onclick="removeFromContinueWatching('{{ item.id }}', '{{ item.type }}', this)" title="Remove from Continue Watching">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
+                                </svg>
+                            </button>
                             {% if item.poster_url %}
                             <img src="{{ item.poster_url }}" alt="{{ item.title }}" loading="lazy">
                             {% else %}

@@ -256,6 +256,74 @@ const watchMark = {
         setTimeout(() => {
             window.location.reload();
         }, 1500);
+    },
+
+    // Remove from Continue Watching
+    removeFromContinueWatching: async function(id, type, buttonElement) {
+        try {
+            // Find the title card element
+            const titleCard = buttonElement.closest('.title-card');
+            const title = titleCard.dataset.title || 'this item';
+            
+            // Confirm removal
+            if (!confirm(`Remove "${title}" from Continue Watching?`)) {
+                return;
+            }
+            
+            // Add loading state
+            buttonElement.style.opacity = '0.5';
+            buttonElement.style.pointerEvents = 'none';
+            
+            // Call API to clear watch progress
+            const response = await fetch('/api/clear_watch_progress', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    type: type,
+                    id: id
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to remove from Continue Watching');
+            }
+
+            const data = await response.json();
+            
+            if (data.success) {
+                // Animate card removal
+                titleCard.style.transition = 'all 0.3s ease';
+                titleCard.style.transform = 'scale(0.8)';
+                titleCard.style.opacity = '0';
+                
+                // Remove card from DOM after animation
+                setTimeout(() => {
+                    titleCard.remove();
+                    
+                    // Check if Continue Watching section is now empty
+                    const continueWatchingSlider = document.getElementById('continue-watching-slider');
+                    if (continueWatchingSlider && continueWatchingSlider.children.length === 0) {
+                        // Hide the entire Continue Watching section
+                        const continueWatchingSection = continueWatchingSlider.closest('.content-row');
+                        if (continueWatchingSection) {
+                            continueWatchingSection.style.transition = 'all 0.3s ease';
+                            continueWatchingSection.style.opacity = '0';
+                            continueWatchingSection.style.marginTop = '-50px';
+                            setTimeout(() => continueWatchingSection.remove(), 300);
+                        }
+                    }
+                }, 300);
+                
+                this.showNotification(`Removed "${title}" from Continue Watching`, 'success');
+            }
+        } catch (error) {
+            console.error('Error removing from Continue Watching:', error);
+            buttonElement.style.opacity = '1';
+            buttonElement.style.pointerEvents = 'auto';
+            this.showNotification('Failed to remove item', 'error');
+        }
     }
 };
 
@@ -266,3 +334,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Make globally accessible
 window.watchMark = watchMark;
+
+// Global function for removing from Continue Watching (for inline onclick)
+window.removeFromContinueWatching = function(id, type, buttonElement) {
+    watchMark.removeFromContinueWatching(id, type, buttonElement);
+};

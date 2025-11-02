@@ -1127,3 +1127,43 @@ class DatabaseService:
             True if removed successfully
         """
         return self.clear_watch_progress(media_type, media_id, season_number, episode_number)
+    
+    def clear_watch_progress(self, media_type: str, media_id: str,
+                            season_number: Optional[int] = None, 
+                            episode_number: Optional[int] = None) -> bool:
+        """
+        Clear watch progress for an item (remove from Continue Watching)
+        
+        Args:
+            media_type: 'movie' or 'series'
+            media_id: IMDB ID
+            season_number: Season number (optional, for series)
+            episode_number: Episode number (optional, for series)
+            
+        Returns:
+            True if cleared successfully
+        """
+        from database import WatchHistory
+        
+        try:
+            query = self.db.query(WatchHistory).filter(
+                WatchHistory.media_type == media_type,
+                WatchHistory.media_id == media_id
+            )
+            
+            # Add episode filters for series if provided
+            if media_type == 'series' and season_number and episode_number:
+                query = query.filter(
+                    WatchHistory.season_number == season_number,
+                    WatchHistory.episode_number == episode_number
+                )
+            
+            # Delete all matching records
+            deleted_count = query.delete()
+            self.db.commit()
+            
+            return deleted_count > 0
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error clearing watch progress: {e}")
+            return False
