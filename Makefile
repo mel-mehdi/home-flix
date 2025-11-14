@@ -1,4 +1,6 @@
 run:
+	@echo "Installing requirements (this installs into the active Python environment)..."
+	@pip3 install --break-system-packages -r requirements.txt || true
 	python3 media_server.py
 
 install:
@@ -8,25 +10,25 @@ update:
 	python3 sync_data.py
 
 build:
-	docker-compose build
+	docker compose build
 
 sync-now:
-	docker-compose exec sync-scheduler python sync_data.py
+	docker compose exec sync-scheduler python sync_data.py
 
 sync-logs:
-	docker-compose logs -f sync-scheduler
+	docker compose logs -f sync-scheduler
 
 # Docker commands
 re: down build up
 
 up:
-	docker-compose up -d
+	docker compose up -d
 
 down:
-	docker-compose down
+	docker compose down
 
 logs:
-	docker-compose logs -f
+	docker compose logs -f
 
 status:
-	docker-compose ps
+	docker compose ps

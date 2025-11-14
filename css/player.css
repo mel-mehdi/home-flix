@@ -638,6 +638,48 @@ textarea {
     justify-content: flex-start;
 }
 
+.source-option:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+.source-option.active {
+    background: rgba(229, 9, 20, 0.2);
+    border: 2px solid #e50914;
+    color: #ffffff;
+}
+
+.source-option.active .source-name {
+    color: #e50914;
+    font-weight: 600;
+}
+
+.source-option.active svg circle {
+    fill: #e50914;
+}
+
+.source-info-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+}
+
+.source-name {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.source-domain {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.source-option.active .source-domain {
+    color: rgba(229, 9, 20, 0.7);
+}
+
 .source-info {
     font-size: 12px;
     color: rgba(255, 255, 255, 0.6);

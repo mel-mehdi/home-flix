@@ -48,9 +48,19 @@
             
             <div class="player-controls" id="topControls">
                 <div class="top-bar">
+                    {% if type == 'episode' and season is defined %}
+                    <a href="/series/{{ imdb_id }}/season/{{ season }}" class="back-button">
+                        ← Back
+                    </a>
+                    {% elif type == 'movie' %}
+                    <a href="/movie/{{ imdb_id }}" class="back-button">
+                        ← Back
+                    </a>
+                    {% else %}
                     <a href="javascript:history.back()" class="back-button">
                         ← Back
                     </a>
+                    {% endif %}
                     
                     <div class="episode-info">
                         <h2 class="episode-title">{{ title }}</h2>
@@ -125,45 +135,7 @@
                 </div>
             </div>
 
-            <!-- Skip Intro Button -->
-            <button class="skip-intro-button" id="skipIntroBtn" style="display: none;" onclick="skipIntro()">
-                Skip Intro
-            </button>
 
-            <!-- Next Episode Button (always visible when available) -->
-            <button class="next-episode-quick-btn" id="nextEpisodeQuickBtn" style="display: none;" onclick="playNextEpisode()" title="Next Episode (N)">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M7 18h2V6H7v12zm4-12v12l9-6-9-6z" fill="currentColor"/>
-                </svg>
-                Next
-            </button>
-
-            <!-- Skip Credits/Next Episode -->
-            <div class="next-episode-container" id="nextEpisodeContainer" style="display: none;">
-                <div class="next-episode-info">
-                    <div class="next-episode-thumbnail">
-                        <div class="play-icon-overlay">▶</div>
-                    </div>
-                    <div class="next-episode-text">
-                        <p class="next-episode-label">Next Episode</p>
-                        <h3 class="next-episode-title">Continue Watching</h3>
-                    </div>
-                </div>
-                <button class="watch-next-button" onclick="playNextEpisode()">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M8 5v14l11-7z" fill="currentColor"/>
-                    </svg>
-                    Play
-                </button>
-            </div>
-
-            <!-- Auto-play countdown -->
-            <div class="autoplay-countdown" id="autoplayCountdown" style="display: none;">
-                <div class="countdown-content">
-                    <p>Next episode playing in <span id="countdownTimer">5</span> seconds</p>
-                    <button class="cancel-autoplay" onclick="cancelAutoplay()">Cancel</button>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -173,12 +145,6 @@
         let playbackStartTime = Date.now();
         let currentProgress = 0;
         let videoDuration = 0;
-        let introStart = 30; // Intro starts at 30 seconds
-        let introEnd = 90;   // Intro ends at 90 seconds
-        let creditsStart = 0; // Will be set based on video duration
-        let hasSkippedIntro = false;
-        let autoplayTimer = null;
-        let countdownInterval = null;
         
         const videoType = "{{ type }}";
         // Parse the tmdb/imdb id from the original embed_url if present
@@ -233,23 +199,6 @@
             setInterval(() => {
                 currentProgress = (Date.now() - playbackStartTime) / 1000; // seconds
                 
-                // Show skip intro button
-                if (currentProgress >= introStart && currentProgress <= introEnd && !hasSkippedIntro) {
-                    document.getElementById('skipIntroBtn').style.display = 'block';
-                } else {
-                    document.getElementById('skipIntroBtn').style.display = 'none';
-                }
-                
-                // Show next episode container near end (only if next episode is available)
-                if (videoType === 'episode' && nextEpisodeData && nextEpisodeData.has_next && videoDuration > 0 && currentProgress >= (videoDuration - 120)) {
-                    document.getElementById('nextEpisodeContainer').style.display = 'flex';
-                }
-                
-                // Start autoplay countdown (only if next episode is available)
-                if (videoType === 'episode' && nextEpisodeData && nextEpisodeData.has_next && videoDuration > 0 && currentProgress >= (videoDuration - 30)) {
-                    startAutoplayCountdown();
-                }
-                
                 // Save progress every 10 seconds
                 if (Math.floor(currentProgress) % 10 === 0) {
                     saveProgress();
@@ -265,47 +214,7 @@
             }, 1000);
         }
         
-        function skipIntro() {
-            hasSkippedIntro = true;
-            document.getElementById('skipIntroBtn').style.display = 'none';
-            // In a real implementation, this would seek the video
-            playbackStartTime = Date.now() - (introEnd * 1000);
-            showToast('Skipped intro');
-        }
-        
-        function playNextEpisode() {
-            showToast('Loading next episode...');
-            // In a real implementation, navigate to next episode
-            setTimeout(() => {
-                window.location.href = '/'; // Placeholder - would navigate to next episode
-            }, 1000);
-        }
-        
-        function startAutoplayCountdown() {
-            if (autoplayTimer || !nextEpisodeData || !nextEpisodeData.has_next) return; // Already started or no next episode
-            
-            let countdown = 5;
-            document.getElementById('autoplayCountdown').style.display = 'block';
-            document.getElementById('countdownTimer').textContent = countdown;
-            
-            countdownInterval = setInterval(() => {
-                countdown--;
-                document.getElementById('countdownTimer').textContent = countdown;
-                
-                if (countdown <= 0) {
-                    clearInterval(countdownInterval);
-                    playNextEpisode();
-                }
-            }, 1000);
-            
-            autoplayTimer = true;
-        }
-        
-        function cancelAutoplay() {
-            clearInterval(countdownInterval);
-            document.getElementById('autoplayCountdown').style.display = 'none';
-            autoplayTimer = null;
-        }
+
         
         function saveProgress() {
             const progressData = {
@@ -479,72 +388,10 @@
             if (e.key === 'Escape') {
                 showControls();
             }
-            if (e.key === 'n' || e.key === 'N') {
-                // Next episode shortcut
-                if (nextEpisodeData && nextEpisodeData.has_next) {
-                    playNextEpisode();
-                }
-            }
-            if (e.key === 's' || e.key === 'S') {
-                // Skip intro shortcut
-                if (currentProgress >= introStart && currentProgress <= introEnd && !hasSkippedIntro) {
-                    skipIntro();
-                }
-            }
+
         });
         
-        // Load next episode information for series episodes
-        async function loadNextEpisodeInfo() {
-            if (videoType === 'episode' && currentSeason && currentEpisode) {
-                try {
-                    const response = await fetch(`/api/next_episode/${imdbId}/${currentSeason}/${currentEpisode}`);
-                    const data = await response.json();
-                    
-                    if (data.has_next) {
-                        nextEpisodeData = data;
-                        
-                        // Update next episode info in the UI
-                        const nextEpisodeTitle = document.querySelector('.next-episode-title');
-                        const nextEpisodeLabel = document.querySelector('.next-episode-label');
-                        const nextEpisodeThumbnail = document.querySelector('.next-episode-thumbnail');
-                        const quickNextBtn = document.getElementById('nextEpisodeQuickBtn');
-                        
-                        if (nextEpisodeTitle) {
-                            nextEpisodeTitle.textContent = data.next_title;
-                        }
-                        if (nextEpisodeLabel) {
-                            nextEpisodeLabel.textContent = `S${data.next_season}E${data.next_episode}`;
-                        }
-                        if (nextEpisodeThumbnail && data.next_still_path) {
-                            nextEpisodeThumbnail.style.backgroundImage = `url(${data.next_still_path})`;
-                            nextEpisodeThumbnail.style.backgroundSize = 'cover';
-                            nextEpisodeThumbnail.style.backgroundPosition = 'center';
-                        }
-                        
-                        // Show the quick next episode button
-                        if (quickNextBtn) {
-                            quickNextBtn.style.display = 'flex';
-                            quickNextBtn.title = `Next: S${data.next_season}E${data.next_episode} - ${data.next_title}`;
-                        }
-                    }
-                } catch (error) {
-                    console.log('Failed to load next episode info:', error);
-                }
-            }
-        }
 
-        // Enhanced play next episode function
-        function playNextEpisode() {
-            if (nextEpisodeData && nextEpisodeData.has_next) {
-                showToast('Loading next episode...');
-                const nextUrl = `/watch/series/${imdbId}/${nextEpisodeData.next_season}/${nextEpisodeData.next_episode}`;
-                setTimeout(() => {
-                    window.location.href = nextUrl;
-                }, 1000);
-            } else {
-                showToast('No next episode available');
-            }
-        }
 
         // Check if item is already watched
         async function checkWatchedStatus() {
@@ -582,15 +429,11 @@
         window.addEventListener('load', () => {
             // Estimate video duration (for movies ~7200s, series ~2700s)
             videoDuration = videoType === 'movie' ? 7200 : 2700;
-            creditsStart = videoDuration - 180; // Credits start 3 minutes before end
             
             // Check if already watched
             checkWatchedStatus();
             
             startProgressTracking();
-            
-            // Load next episode info for series
-            loadNextEpisodeInfo();
             
             // Save initial view
             setTimeout(() => saveProgress(), 5000);

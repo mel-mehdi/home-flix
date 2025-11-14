@@ -92,6 +92,8 @@ def get_embed_sources(media_type: str, identifier: str, season: Optional[int] = 
     """
     if media_type == 'movie':
         return [
+            f"https://xprime.tv/watch/{identifier}",
+            f"https://rivestream.org/watch?type=movie&id={identifier}",
             f"https://vidfast.pro/movie/{identifier}?autoPlay=true&nextButton=true&autoNext=true",
             f"https://vidsrc.to/embed/movie/{identifier}",
             f"https://vidsrc.xyz/embed/movie?tmdb={identifier}",
@@ -102,6 +104,8 @@ def get_embed_sources(media_type: str, identifier: str, season: Optional[int] = 
         ]
     elif media_type == 'tv':
         return [
+            f"https://xprime.tv/watch/{identifier}",
+            f"https://rivestream.org/watch?type=tv&id={identifier}",
             f"https://vidfast.pro/tv/{identifier}?autoPlay=true&nextButton=true&autoNext=true",
             f"https://vidsrc.me/embed/tv?tmdb={identifier}",
             f"https://vidsrc.xyz/embed/tv?tmdb={identifier}",
@@ -111,6 +115,8 @@ def get_embed_sources(media_type: str, identifier: str, season: Optional[int] = 
         ]
     elif media_type == 'episode' and season is not None and episode is not None:
         return [
+            f"https://xprime.tv/watch/{identifier}/{season}/{episode}",
+            f"https://rivestream.org/watch?type=tv&id={identifier}&season={season}&episode={episode}",
             f"https://vidfast.pro/tv/{identifier}/{season}/{episode}?autoPlay=true&nextButton=true&autoNext=true",
             f"https://www.2embed.cc/embedtv/{identifier}&s={season}&e={episode}",
             f"https://vidsrc.to/embed/tv/{identifier}/{season}/{episode}",
