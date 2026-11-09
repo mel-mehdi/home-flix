@@ -7,6 +7,10 @@ import subprocess
 import sys
 from datetime import datetime
 
+# Windows consoles default to cp1252, which can't print the emoji in our status messages
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 def run_sync():
     """Run the sync_data.py script"""
     try:

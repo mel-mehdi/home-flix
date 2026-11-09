@@ -4,6 +4,12 @@ Fast parallel processing with batch operations
 """
 import requests
 import time
+import sys
+
+# Windows consoles default to cp1252, which can't print the emoji in our status messages
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 from database import init_db
 from db_service import DatabaseService
 from concurrent.futures import ThreadPoolExecutor, as_completed

@@ -2,6 +2,12 @@ from flask import Flask, render_template, request, Response, send_file, send_fro
 import requests
 import io
 import logging
+import sys
+
+# Windows consoles default to cp1252, which can't print the emoji in our status messages
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 from database import init_db
 from db_service import DatabaseService
 from config import api_config, cache_config, server_config, pagination_config, get_embed_sources

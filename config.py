@@ -50,7 +50,8 @@ class DatabaseConfig:
 class ServerConfig:
     """Flask server configuration"""
     HOST: str = os.getenv('FLASK_HOST', '0.0.0.0')
-    PORT: int = int(os.getenv('FLASK_PORT', '5000'))
+    # Fall back to PORT, which gunicorn_config.py and most hosts use
+    PORT: int = int(os.getenv('FLASK_PORT', os.getenv('PORT', '5000')))
     DEBUG: bool = os.getenv('FLASK_ENV', 'production') == 'development'
     THREADED: bool = True
     
@@ -92,9 +93,11 @@ def get_embed_sources(media_type: str, identifier: str, season: Optional[int] = 
     """
     if media_type == 'movie':
         return [
-            f"https://xprime.tv/watch/{identifier}",
-            f"https://rivestream.org/watch?type=movie&id={identifier}",
+            f"https://streamimdb.ru/embed/movie/{identifier}",
             f"https://vidfast.pro/movie/{identifier}?autoPlay=true&nextButton=true&autoNext=true",
+            f"https://xprime.tv/watch/{identifier}",
+            f"https://www.fmovies.gd/watch/movie/{identifier}",
+            f"https://rivestream.org/watch?type=movie&id={identifier}",
             f"https://vidsrc.to/embed/movie/{identifier}",
             f"https://vidsrc.xyz/embed/movie?tmdb={identifier}",
             f"https://vidsrc.pro/embed/movie/{identifier}",
@@ -104,9 +107,11 @@ def get_embed_sources(media_type: str, identifier: str, season: Optional[int] = 
         ]
     elif media_type == 'tv':
         return [
-            f"https://xprime.tv/watch/{identifier}",
-            f"https://rivestream.org/watch?type=tv&id={identifier}",
+            f"https://streamimdb.ru/embed/tv/{identifier}",
             f"https://vidfast.pro/tv/{identifier}?autoPlay=true&nextButton=true&autoNext=true",
+            f"https://xprime.tv/watch/{identifier}",
+            f"https://www.fmovies.gd/watch/tv/{identifier}",
+            f"https://rivestream.org/watch?type=tv&id={identifier}",
             f"https://vidsrc.me/embed/tv?tmdb={identifier}",
             f"https://vidsrc.xyz/embed/tv?tmdb={identifier}",
             f"https://vidsrc.pro/embed/tv/{identifier}",
@@ -115,9 +120,11 @@ def get_embed_sources(media_type: str, identifier: str, season: Optional[int] = 
         ]
     elif media_type == 'episode' and season is not None and episode is not None:
         return [
-            f"https://xprime.tv/watch/{identifier}/{season}/{episode}",
-            f"https://rivestream.org/watch?type=tv&id={identifier}&season={season}&episode={episode}",
+            f"https://streamimdb.ru/embed/tv/{identifier}/{season}/{episode}",
             f"https://vidfast.pro/tv/{identifier}/{season}/{episode}?autoPlay=true&nextButton=true&autoNext=true",
+            f"https://xprime.tv/watch/{identifier}/{season}/{episode}",
+            f"https://www.fmovies.gd/watch/tv/{identifier}/{season}/{episode}",
+            f"https://rivestream.org/watch?type=tv&id={identifier}&season={season}&episode={episode}",
             f"https://www.2embed.cc/embedtv/{identifier}&s={season}&e={episode}",
             f"https://vidsrc.to/embed/tv/{identifier}/{season}/{episode}",
             f"https://multiembed.mov/?video_id={identifier}&tmdb=1&s={season}&e={episode}",
