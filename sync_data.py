@@ -11,13 +11,14 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 from database import init_db
+from config import api_config
 from db_service import DatabaseService
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache
 import threading
 
 # TMDB Configuration
-TMDB_ACCESS_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI2YjUyNzU0MWNmODJlNjdhMmJhOGRmZTFmYjZiMDkwYyIsIm5iZiI6MTc1OTA3NDM4Mi44MDMsInN1YiI6IjY4ZDk1ODRlYWQzMTdmMmI2MWJiMDkxYSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.HnNxWDnTZIwhVWbXH8gpVfY1n6v0pse5z2A-KUSyI5I'
+TMDB_ACCESS_TOKEN = api_config.TMDB_ACCESS_TOKEN
 TMDB_BASE_URL = 'https://api.themoviedb.org/3'
 
 # Thread-safe counter for progress
@@ -117,7 +118,8 @@ def fetch_vidsrc_page(page, media_type, retry=3):
     """Fetch a single page from VidSrc with retry logic"""
     for attempt in range(retry):
         try:
-            url = f"https://vidsrc.xyz/{media_type}/latest/page-{page}.json"
+            # vidsrc.xyz no longer exists (2026-11-10); vidsrc.me redirects here
+            url = f"https://vidsrc.sh/{media_type}/latest/page-{page}.json"
             response = session.get(url, timeout=15)
             response.raise_for_status()
             data = response.json()

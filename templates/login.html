@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{{ 'Create account' if mode == 'signup' else 'Sign in' }} - HomeFlix</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/theme.css?v={{ asset_version }}">
+    <link rel="stylesheet" href="/css/login.css?v={{ asset_version }}">
+</head>
+<body class="login-page">
+    <main class="login-card">
+        <div class="hf-logo login-logo" aria-label="HomeFlix">
+            <svg class="hf-logo-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3.5 29 14v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V14z" fill="#E50914"/><path d="M13 13v10l8.5-5z" fill="#fff"/></svg>
+            <span>HOME<span class="hf-logo-accent">FLIX</span></span>
+        </div>
+        {% if mode == 'signup' %}
+        <h1 class="login-title">Create account</h1>
+        <form method="post" action="/signup" class="login-form">
+            <input type="hidden" name="next" value="{{ next_url }}">
+            <label for="username" class="login-label">Username</label>
+            <input type="text" id="username" name="username" class="login-input" value="{{ username }}"
+                   autocomplete="username" autocapitalize="none" spellcheck="false"
+                   minlength="3" maxlength="30" pattern="[A-Za-z0-9_.\-]+" required autofocus>
+            <label for="password" class="login-label">Password</label>
+            <input type="password" id="password" name="password" class="login-input"
+                   autocomplete="new-password" minlength="8" required>
+            <label for="confirm" class="login-label">Password again</label>
+            <input type="password" id="confirm" name="confirm" class="login-input"
+                   autocomplete="new-password" minlength="8" required>
+            {% if needs_invite %}
+            <label for="invite" class="login-label">Invite code</label>
+            <input type="password" id="invite" name="invite" class="login-input" autocomplete="off" required>
+            {% endif %}
+            {% if error %}<p class="login-error" role="alert">{{ error }}</p>{% endif %}
+            <button type="submit" class="btn btn-primary login-button">Create account</button>
+        </form>
+        <p class="login-switch">Already have an account? <a href="/login?next={{ next_url | urlencode }}">Sign in</a></p>
+        {% else %}
+        <h1 class="login-title">Sign in</h1>
+        <form method="post" action="/login" class="login-form">
+            <input type="hidden" name="next" value="{{ next_url }}">
+            <label for="username" class="login-label">Username</label>
+            <input type="text" id="username" name="username" class="login-input" value="{{ username }}"
+                   autocomplete="username" autocapitalize="none" spellcheck="false" required
+                   {% if not username %}autofocus{% endif %}>
+            <label for="password" class="login-label">Password</label>
+            <input type="password" id="password" name="password" class="login-input"
+                   autocomplete="current-password" required {% if username %}autofocus{% endif %}>
+            {% if error %}<p class="login-error" role="alert">{{ error }}</p>{% endif %}
+            <button type="submit" class="btn btn-primary login-button">Sign in</button>
+        </form>
+        <p class="login-switch">New here? <a href="/signup?next={{ next_url | urlencode }}">Create an account</a></p>
+        {% endif %}
+    </main>
+</body>
+</html>

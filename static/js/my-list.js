@@ -71,39 +71,49 @@ function showMyList() {
         });
 }
 
+// Escape text for use inside the popup's HTML (titles can contain quotes and <, >, &)
+function escapeMyListText(text) {
+    const span = document.createElement('span');
+    span.textContent = text == null ? '' : String(text);
+    return span.innerHTML.replace(/"/g, '&quot;');
+}
+
 function openMyListModal(items) {
-    // Limit to 5 items for preview
-    const maxItems = 5;
-    const previewItems = items.slice(0, maxItems);
-    const hasMore = items.length > maxItems;
-    
     // Create modal overlay
     const modal = document.createElement('div');
     modal.className = 'my-list-modal';
     modal.innerHTML = `
         <div class="my-list-modal-content">
             <div class="my-list-modal-header">
-                <h2>My List</h2>
-                <button class="my-list-modal-close" onclick="closeMyListModal()">
+                <h2>My List <span class="my-list-count">${items.length}</span></h2>
+                <button class="my-list-modal-close" onclick="closeMyListModal()" aria-label="Close">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
                     </svg>
                 </button>
             </div>
             <div class="my-list-modal-body">
+                <!-- Every item in one row that scrolls left to right -->
+                <button class="my-list-scroll my-list-scroll-prev" aria-label="Scroll left">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor"/></svg>
+                </button>
                 <div class="my-list-grid">
-                    ${previewItems.map(item => `
-                        <div class="my-list-item" data-type="${item.type}" data-id="${item.id || item.imdb_id}" data-tmdb-id="${item.tmdb_id}">
+                    ${items.map(item => {
+                        const id = escapeMyListText(item.id || item.imdb_id);
+                        const title = escapeMyListText(item.title);
+                        const type = escapeMyListText(item.type);
+                        return `
+                        <div class="my-list-item" data-type="${type}" data-id="${id}" data-tmdb-id="${escapeMyListText(item.tmdb_id)}" data-title="${title}">
                             <div class="my-list-item-poster">
-                                ${item.poster_url ? `<img src="${item.poster_url}" alt="${item.title}" loading="lazy">` : `<div class="placeholder-image"><span>${item.title.charAt(0)}</span></div>`}
+                                ${item.poster_url ? `<img src="${escapeMyListText(item.poster_url)}" alt="${title}" loading="lazy">` : `<div class="placeholder-image"><span>${escapeMyListText((item.title || '?').charAt(0))}</span></div>`}
                                 <div class="my-list-item-overlay">
-                                    <button class="btn btn-primary" onclick="homeflixApp.playTitle('${item.type}', '${item.id || item.imdb_id}')">
+                                    <button class="btn btn-primary my-list-play">
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <path d="M8 5v14l11-7z" fill="currentColor"/>
                                         </svg>
                                         Play
                                     </button>
-                                    <button class="btn btn-icon" onclick="removeFromMyListModal('${item.type}', '${item.id || item.imdb_id}', '${item.title}')" title="Remove from My List">
+                                    <button class="btn btn-icon my-list-remove" title="Remove from My List">
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" fill="currentColor"/>
                                         </svg>
@@ -111,28 +121,60 @@ function openMyListModal(items) {
                                 </div>
                             </div>
                             <div class="my-list-item-info">
-                                <h3>${item.title}</h3>
+                                <h3>${title}</h3>
                                 <p class="my-list-item-type">${item.type === 'movie' ? 'Movie' : 'TV Show'}</p>
                             </div>
                         </div>
-                    `).join('')}
+                    `;
+                    }).join('')}
                 </div>
-                ${hasMore ? `
-                    <div class="my-list-show-more">
-                        <button onclick="goToMyListPage()">
-                            Show More (${items.length - maxItems} more items)
-                        </button>
-                    </div>
-                ` : ''}
+                <button class="my-list-scroll my-list-scroll-next" aria-label="Scroll right">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" fill="currentColor"/></svg>
+                </button>
             </div>
         </div>
     `;
     
     document.body.appendChild(modal);
     
+    const row = modal.querySelector('.my-list-grid');
+    const prevButton = modal.querySelector('.my-list-scroll-prev');
+    const nextButton = modal.querySelector('.my-list-scroll-next');
+    
+    // Arrows only where there is more to see in that direction
+    function updateScrollButtons() {
+        const maxScroll = row.scrollWidth - row.clientWidth;
+        prevButton.hidden = row.scrollLeft <= 4;
+        nextButton.hidden = row.scrollLeft >= maxScroll - 4;
+    }
+    prevButton.addEventListener('click', () => row.scrollBy({ left: -row.clientWidth * 0.8, behavior: 'smooth' }));
+    nextButton.addEventListener('click', () => row.scrollBy({ left: row.clientWidth * 0.8, behavior: 'smooth' }));
+    row.addEventListener('scroll', updateScrollButtons, { passive: true });
+    window.addEventListener('resize', updateScrollButtons);
+    
+    // A regular mouse wheel scrolls the row sideways
+    row.addEventListener('wheel', function(e) {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && row.scrollWidth > row.clientWidth) {
+            e.preventDefault();
+            row.scrollLeft += e.deltaY;
+        }
+    }, { passive: false });
+    
+    // Play and remove buttons read the item's data attributes, so titles need no quoting
+    row.addEventListener('click', function(e) {
+        const item = e.target.closest('.my-list-item');
+        if (!item) return;
+        if (e.target.closest('.my-list-remove')) {
+            removeFromMyListModal(item.dataset.type, item.dataset.id, item.dataset.title);
+        } else if (e.target.closest('.my-list-play') && typeof homeflixApp !== 'undefined') {
+            homeflixApp.playTitle(item.dataset.type, item.dataset.id);
+        }
+    });
+    
     // Add animation
     setTimeout(() => {
         modal.classList.add('active');
+        updateScrollButtons();
     }, 10);
     
     // Close on outside click
@@ -150,27 +192,6 @@ function closeMyListModal() {
         setTimeout(() => {
             modal.remove();
         }, 300);
-    }
-}
-
-function goToMyListPage() {
-    closeMyListModal();
-    // Scroll to the My List section on the homepage
-    const myListSection = document.querySelector('#my-list-slider');
-    if (myListSection) {
-        const section = myListSection.closest('.content-row');
-        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        if (typeof homeflixApp !== 'undefined') {
-            homeflixApp.showNotification('Showing your full list below', 'info');
-        }
-    } else {
-        // If there's no My List section visible, reload to show it
-        if (typeof homeflixApp !== 'undefined') {
-            homeflixApp.showNotification('Loading your full list...', 'info');
-        }
-        setTimeout(() => {
-            window.location.href = '/#my-list';
-        }, 500);
     }
 }
 
@@ -200,9 +221,11 @@ function removeFromMyListModal(type, id, title) {
                 itemElement.style.animation = 'fadeOut 0.3s ease';
                 setTimeout(() => {
                     itemElement.remove();
-                    
+
                     // Check if modal is now empty
                     const remainingItems = document.querySelectorAll('.my-list-item');
+                    const count = document.querySelector('.my-list-count');
+                    if (count) count.textContent = remainingItems.length;
                     if (remainingItems.length === 0) {
                         closeMyListModal();
                         if (typeof homeflixApp !== 'undefined') {

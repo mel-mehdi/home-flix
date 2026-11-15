@@ -1,3 +1,5 @@
+# Secrets come in at runtime via docker-compose env_file, never baked into the image
+.env
 __pycache__
 *.pyc
 *.pyo
@@ -23,3 +25,12 @@ coverage.xml
 .DS_Store
 .vscode
 .idea
+
+# Local-only files: the database is mounted at runtime (docker-compose volumes), not baked in
+homeflix.db
+homeflix.db.bak-*
+tunnel-url.txt
+*.ps1
+*.bat
+homeflix-bundle.tgz
+deploy

@@ -1,8 +1,10 @@
-Flask==3.0.0
-requests==2.31.0
+Flask==3.1.3
+requests==2.34.2
 # Use a SQLAlchemy release compatible with newer Python typing internals
 # Pin to a safe minimum so older incompatible 2.0.23 isn't installed on Python 3.13+
 SQLAlchemy>=2.0.33,<3
-python-dotenv==1.0.0
-gunicorn==21.2.0
-psutil==5.9.6
+python-dotenv==1.2.4
+gunicorn==26.2.0
+psutil==7.2.2
+# Postgres driver, used when DATABASE_URL points at Postgres (e.g. Neon)
+psycopg[binary]==3.2.13

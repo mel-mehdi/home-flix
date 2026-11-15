@@ -264,12 +264,7 @@ const watchMark = {
             // Find the title card element
             const titleCard = buttonElement.closest('.title-card');
             const title = titleCard.dataset.title || 'this item';
-            
-            // Confirm removal
-            if (!confirm(`Remove "${title}" from Continue Watching?`)) {
-                return;
-            }
-            
+
             // Add loading state
             buttonElement.style.opacity = '0.5';
             buttonElement.style.pointerEvents = 'none';

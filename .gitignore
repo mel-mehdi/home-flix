@@ -53,3 +53,9 @@ logs/
 # Cache
 .cache/
 *.cache
+
+# Cloudflare tunnel (start-tunnel.ps1)
+tunnel.log
+tunnel-url.txt
+homeflix.db.bak-*
+homeflix-bundle.tgz

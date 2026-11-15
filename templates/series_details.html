@@ -1,12 +1,13 @@
-<!DOCTYPE html>
+{% import '_details_extras.html' as extras %}<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ series.title }} - Myflix</title>
-    <link rel="stylesheet" href="/css/index.css">
-    <link rel="stylesheet" href="/css/modal.css">
-    <link rel="stylesheet" href="/css/watch-mark.css">
+    <title>{{ series.title }} - HomeFlix</title>
+    <link rel="stylesheet" href="/css/index.css?v={{ asset_version }}">
+    <link rel="stylesheet" href="/css/modal.css?v={{ asset_version }}">
+    <link rel="stylesheet" href="/css/watch-mark.css?v={{ asset_version }}">
+    <link rel="stylesheet" href="/css/details-extras.css?v={{ asset_version }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -26,7 +27,8 @@
             display: flex;
             align-items: flex-end;
             padding: 60px;
-            background: linear-gradient(to top, #141414 0%, rgba(20, 20, 20, 0.7) 50%, rgba(20, 20, 20, 0.4) 100%),
+            /* Light tint only: theme.css draws the cinematic overlay on top */
+            background: linear-gradient(to top, rgba(8, 8, 8, 0.35) 0%, rgba(8, 8, 8, 0.1) 100%),
                         url('{{ series.backdrop_url }}') center/cover;
         }
 
@@ -222,6 +224,12 @@
             padding: 40px 60px;
         }
 
+        /* Line More Like This up with the Seasons and Cast sections */
+        .more-like-this {
+            margin-top: 0;
+            padding: 0 60px 40px;
+        }
+
         .cast-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -254,7 +262,8 @@
         }
 
         .back-button {
-            position: fixed;
+            /* absolute, not fixed: scrolls away with the hero instead of covering the content */
+            position: absolute;
             top: 80px;
             left: 30px;
             background: rgba(0, 0, 0, 0.7);
@@ -275,38 +284,28 @@
         .back-button:hover {
             background: rgba(0, 0, 0, 0.9);
         }
+        /* Phones: stack and tighten so nothing runs off the screen */
+        @media (max-width: 768px) {
+            .series-hero { height: auto; min-height: 60vh; padding: 130px 16px 24px; }
+            .series-title-main { font-size: 2rem; margin-bottom: 12px; }
+            .series-meta { flex-wrap: wrap; gap: 10px; font-size: 0.95rem; }
+            .series-overview { font-size: 0.95rem; margin-bottom: 20px; }
+            .series-action-buttons { flex-wrap: wrap; gap: 10px; }
+            .btn-play, .btn-add-list, .btn-like { padding: 10px 16px; font-size: 1rem; }
+            .series-info-section, .seasons-section, .cast-section { padding: 24px 16px; }
+            .more-like-this { padding: 0 16px 24px; }
+            .info-row { flex-direction: column; gap: 4px; }
+            .seasons-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+            .cast-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+            .back-button { top: 76px; left: 16px; }
+        }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <!-- HomeFlix theme: loaded last so it applies on top of the page's own styles -->
+    <link rel="stylesheet" href="/css/theme.css?v={{ asset_version }}">
 </head>
 <body>
-    <header class="navbar" id="navbar">
-        <div class="navbar-left">
-            <a href="/" class="netflix-logo">MYFLIX</a>
-            <nav class="main-nav">
-                <a href="/" class="nav-link">Home</a>
-                <a href="javascript:void(0)" class="nav-link" onclick="showMyList()">My List</a>
-            </nav>
-        </div>
-        
-        <div class="navbar-right">
-            <!-- Search -->
-            <div class="search-container">
-                <button class="search-toggle" onclick="toggleSearch()" aria-label="Search">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </button>
-                <input type="text" class="search-input" id="searchInput" placeholder="Titles, people, genres">
-                <div class="search-suggestions" id="searchSuggestions"></div>
-            </div>
-            
-            <!-- Profile Menu -->
-            <div class="profile-menu">
-                <div class="profile-avatar">
-                    <div class="avatar-icon">M</div>
-                </div>
-            </div>
-        </div>
-    </header>
+    {% with active='tv' %}{% include '_subpage_nav.html' %}{% endwith %}
 
     <button class="back-button" onclick="window.history.back()">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -325,7 +324,10 @@
                     <span class="match-score">{{ (series.vote_average * 10) | round | int }}% Match</span>
                     <span>{{ series.year }}</span>
                     <span class="rating-badge">{{ series.rating or 'TV-MA' }}</span>
-                    <span>{{ series.number_of_seasons }} Season{% if series.number_of_seasons != 1 %}s{% endif %}</span>
+                    {% set season_count = series.number_of_seasons or (series.seasons | length if series.seasons else 0) %}
+                    {% if season_count %}
+                    <span>{{ season_count }} Season{% if season_count != 1 %}s{% endif %}</span>
+                    {% endif %}
                     <span class="genre-tag">HD</span>
                 </div>
 
@@ -342,19 +344,16 @@
                         </svg>
                         Play
                     </button>
-                    {% set is_in_list = false %}
-                    {% for item in my_list %}
-                        {% if item.imdb_id == series.imdb_id %}
-                            {% set is_in_list = true %}
-                        {% endif %}
-                    {% endfor %}
+                    {{ extras.trailer_button(series.trailer_key) }}
+                    {# A plain set inside a for loop doesn't leave the loop in Jinja, so filter instead #}
+                    {% set is_in_list = my_list | selectattr('imdb_id', 'equalto', imdb_id) | list | length > 0 %}
                     <button type="button" 
                             class="btn-add-list" 
                             data-added="{{ 'true' if is_in_list else 'false' }}" 
                             data-type="series" 
                             data-id="{{ imdb_id }}" 
                             data-tmdb-id="{{ series.tmdb_id }}" 
-                            data-title="{{ series.title | replace('"', '&quot;') | replace("'", '&#39;') }}">
+                            data-title="{{ series.title }}">
                         {% if is_in_list %}
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" fill="currentColor"/>
@@ -383,6 +382,7 @@
 
         <!-- Series Info Section -->
         <div class="series-info-section">
+            {{ extras.details_unavailable_notice(series.details_unavailable) }}
             {% if series.genres %}
             <div class="info-row">
                 <div class="info-label">Genres:</div>
@@ -446,7 +446,7 @@
                                         data-season="{{ season.season_number }}" 
                                         data-episode-count="{{ season.episode_count }}"
                                         title="Mark Season as Watched"
-                                        onclick="event.stopPropagation(); toggleSeasonWatched('{{ imdb_id }}', {{ series.tmdb_id }}, '{{ series.title|replace("'", "\\'") }}', {{ season.season_number }}, {{ season.episode_count }}, this)">
+                                        onclick='event.stopPropagation(); toggleSeasonWatched({{ imdb_id|tojson }}, {{ series.tmdb_id|tojson }}, {{ series.title|tojson }}, {{ season.season_number|tojson }}, {{ season.episode_count|tojson }}, this)'>
                                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                         <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" stroke="currentColor" stroke-width="2"/>
                                     </svg>
@@ -485,7 +485,11 @@
             </div>
         </div>
         {% endif %}
+
+        {{ extras.more_like_this(series.more_like_this, 'series') }}
     </div>
+
+    {{ extras.trailer_modal() }}
 
     <!-- Shared navigation and My List functionality -->
     <script src="/static/js/netflix.js"></script>
@@ -534,8 +538,8 @@
             const button = document.getElementById('markSeriesWatchedBtn');
             const text = document.getElementById('seriesWatchText');
             const imdbId = '{{ imdb_id }}';
-            const tmdbId = {{ series.tmdb_id }};
-            const seriesTitle = '{{ series.title|replace("'", "\\'") }}';
+            const tmdbId = {{ series.tmdb_id|tojson }};
+            const seriesTitle = {{ series.title|tojson }};
             
             // Collect all seasons data
             const seasons = [

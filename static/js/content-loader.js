@@ -41,6 +41,35 @@ function loadMoreMovies() {
         });
 }
 
+// Show More on the Trending rows (kind: 'movie' or 'series'); hides itself when the server has no more
+const trendingPages = { movie: 1, series: 1 };
+
+function loadMoreTrending(kind, button) {
+    button.disabled = true;
+    button.textContent = 'Loading...';
+    trendingPages[kind]++;
+
+    fetch(`/load_more_trending/${kind}/${trendingPages[kind]}`)
+        .then(response => response.json())
+        .then((data) => {
+            const slider = document.getElementById(kind === 'movie' ? 'trending-movies-slider' : 'trending-series-slider');
+            (data.items || []).forEach(item => {
+                slider.appendChild(createTitleCard(item, kind));
+            });
+            button.disabled = false;
+            button.textContent = 'Show More';
+            if (!data.has_more || !data.items || data.items.length === 0) {
+                button.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading more trending titles:', error);
+            trendingPages[kind]--;
+            button.disabled = false;
+            button.textContent = 'Show More';
+        });
+}
+
 // Load more series
 function loadMoreSeries() {
     const button = document.querySelector('#series-slider').parentElement.querySelector('.load-more-button');

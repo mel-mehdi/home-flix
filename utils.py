@@ -118,6 +118,10 @@ def retry_on_failure(max_retries: int = 3, delay: float = 1.0, backoff: float = 
                     return func(*args, **kwargs)
                 except Exception as e:
                     last_exception = e
+                    # A client error (e.g. 404) won't succeed on retry; 429 rate limiting might
+                    response = getattr(e, 'response', None)
+                    if response is not None and 400 <= response.status_code < 500 and response.status_code != 429:
+                        raise
                     if attempt < max_retries:
                         logger.warning(
                             f"Attempt {attempt + 1}/{max_retries} failed for {func.__name__}: {e}. "

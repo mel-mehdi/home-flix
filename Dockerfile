@@ -1,5 +1,8 @@
-# Use Python 3.11 slim image
-FROM python:3.11-slim
+# Use Python 3.13 slim image (matches local development)
+FROM python:3.13-slim
+
+# Print logs right away, also on hosts that run the image without docker-compose (Back4app)
+ENV PYTHONUNBUFFERED=1
 
 # Set working directory
 WORKDIR /app

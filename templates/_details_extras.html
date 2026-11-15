@@ -1,0 +1,86 @@
+{# Shared pieces for movie_details.html and series_details.html: trailer button + player, and the More Like This row #}
+
+{% macro details_unavailable_notice(show) %}
+{% if show %}
+<div class="details-unavailable" role="status">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="currentColor"/>
+    </svg>
+    <div>
+        <strong>Seasons, episodes, cast and trailers couldn't be loaded.</strong>
+        TMDB didn't answer, usually because <code>TMDB_ACCESS_TOKEN</code> in <code>.env</code> is missing or invalid.
+        Put your TMDB read access token there and restart the server.
+    </div>
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro trailer_button(trailer_key) %}
+{% if trailer_key %}
+<button type="button" class="btn-trailer" onclick='openTrailer({{ trailer_key|tojson }})'>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M21 6.5l-4 3V7a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1v-2.5l4 3v-11z" fill="currentColor"/>
+    </svg>
+    Trailer
+</button>
+{% endif %}
+{% endmacro %}
+
+{% macro trailer_modal() %}
+<div class="trailer-modal" id="trailerModal" onclick="if (event.target === this) closeTrailer()" role="dialog" aria-modal="true" aria-label="Trailer" hidden>
+    <div class="trailer-modal-content">
+        <button type="button" class="trailer-close" onclick="closeTrailer()" aria-label="Close trailer">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
+            </svg>
+        </button>
+        <div class="trailer-frame">
+            <iframe id="trailerFrame" title="Trailer" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+        </div>
+    </div>
+</div>
+<script>
+    function openTrailer(key) {
+        const modal = document.getElementById('trailerModal');
+        document.getElementById('trailerFrame').src = 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(key) + '?autoplay=1&rel=0';
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeTrailer() {
+        const modal = document.getElementById('trailerModal');
+        // Clearing the src stops playback
+        document.getElementById('trailerFrame').src = '';
+        modal.hidden = true;
+        document.body.style.overflow = '';
+    }
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && !document.getElementById('trailerModal').hidden) {
+            closeTrailer();
+        }
+    });
+</script>
+{% endmacro %}
+
+{% macro more_like_this(items, kind) %}
+{% if items %}
+<section class="more-like-this">
+    <h2 class="more-like-this-title">More Like This</h2>
+    <div class="more-like-this-grid">
+        {% for item in items %}
+        <a class="mlt-card" href="/{{ kind }}/{{ item.imdb_id }}">
+            <div class="mlt-poster">
+                <img src="{{ item.poster_url }}" alt="{{ item.title }}" loading="lazy">
+                {% if item.vote_average %}
+                <span class="mlt-score">★ {{ "%.1f"|format(item.vote_average) }}</span>
+                {% endif %}
+            </div>
+            <div class="mlt-title">{{ item.title }}</div>
+            {% if item.year %}<div class="mlt-year">{{ item.year }}</div>{% endif %}
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+{% endmacro %}
