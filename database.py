@@ -1,12 +1,22 @@
-from sqlalchemy import create_engine, Column, Integer, String, Text, Float, DateTime, Boolean, JSON, Index
+from sqlalchemy import create_engine, Column, Integer, String, Text, Float, DateTime, Boolean, JSON, Index, inspect, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.pool import QueuePool
 from datetime import datetime
 from contextlib import contextmanager
-from config import db_config
+from config import db_config, api_config
 
 Base = declarative_base()
+
+
+def tmdb_poster_url(poster_path):
+    """Visitors load images straight from TMDB's servers, not through HomeFlix and the tunnel"""
+    return f'{api_config.TMDB_IMAGE_BASE_URL}{poster_path}' if poster_path else None
+
+
+def tmdb_backdrop_url(backdrop_path):
+    return f'{api_config.TMDB_BACKDROP_BASE_URL}{backdrop_path}' if backdrop_path else None
+
 
 class Movie(Base):
     __tablename__ = 'movies'
@@ -50,8 +60,8 @@ class Movie(Base):
             'rating': self.rating,
             'duration': self.duration,
             'genres': self.genres,
-            'poster_url': f'/poster/movie/{self.tmdb_id}' if self.tmdb_id and self.poster_path else None,
-            'backdrop_url': f'/backdrop/movie/{self.tmdb_id}' if self.tmdb_id and self.backdrop_path else None,
+            'poster_url': tmdb_poster_url(self.poster_path),
+            'backdrop_url': tmdb_backdrop_url(self.backdrop_path),
             'vote_average': self.vote_average,
             'popularity': self.popularity,
             'quality': self.quality,
@@ -99,17 +109,28 @@ class TVShow(Base):
             'rating': self.rating,
             'number_of_seasons': self.number_of_seasons,
             'genres': self.genres,
-            'poster_url': f'/poster/tv/{self.tmdb_id}' if self.tmdb_id and self.poster_path else None,
-            'backdrop_url': f'/backdrop/tv/{self.tmdb_id}' if self.tmdb_id and self.backdrop_path else None,
+            'poster_url': tmdb_poster_url(self.poster_path),
+            'backdrop_url': tmdb_backdrop_url(self.backdrop_path),
             'vote_average': self.vote_average,
             'popularity': self.popularity,
             'is_trending': self.is_trending,
         }
 
+class User(Base):
+    """A person who signs in; My List, watch history and watched marks belong to one user"""
+    __tablename__ = 'users'
+
+    id = Column(Integer, primary_key=True)
+    username = Column(String(30), unique=True, nullable=False, index=True)  # stored lowercase
+    password_hash = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class MyList(Base):
     __tablename__ = 'my_list'
-    
+
     id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, index=True)
     media_type = Column(String(10), nullable=False, index=True)  # 'movie' or 'series'
     media_id = Column(String(20), nullable=False, index=True)  # imdb_id
     tmdb_id = Column(Integer)
@@ -118,7 +139,7 @@ class MyList(Base):
     
     # Composite unique constraint to prevent duplicates
     __table_args__ = (
-        Index('idx_mylist_type_id', 'media_type', 'media_id', unique=True),
+        Index('idx_mylist_user_type_id', 'user_id', 'media_type', 'media_id', unique=True),
     )
     
     def to_dict(self):
@@ -136,8 +157,9 @@ class MyList(Base):
 class WatchHistory(Base):
     """Track user's watch history and progress"""
     __tablename__ = 'watch_history'
-    
+
     id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, index=True)
     media_type = Column(String(10), nullable=False, index=True)  # 'movie' or 'series'
     media_id = Column(String(20), nullable=False, index=True)  # imdb_id
     tmdb_id = Column(Integer)
@@ -161,7 +183,7 @@ class WatchHistory(Base):
     
     # Composite unique constraint for movies, unique per episode for series
     __table_args__ = (
-        Index('idx_watch_history_lookup', 'media_type', 'media_id', 'season_number', 'episode_number', unique=True),
+        Index('idx_watch_history_user_lookup', 'user_id', 'media_type', 'media_id', 'season_number', 'episode_number', unique=True),
         Index('idx_watch_history_last_watched', 'last_watched'),
     )
     
@@ -192,8 +214,9 @@ class WatchHistory(Base):
 class WatchedItems(Base):
     """Track items manually marked as watched by the user"""
     __tablename__ = 'watched_items'
-    
+
     id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, index=True)
     media_type = Column(String(10), nullable=False, index=True)  # 'movie' or 'series'
     media_id = Column(String(20), nullable=False, index=True)  # imdb_id
     tmdb_id = Column(Integer)
@@ -209,7 +232,7 @@ class WatchedItems(Base):
     
     # Composite unique constraint for movies, unique per episode for series
     __table_args__ = (
-        Index('idx_watched_items_lookup', 'media_type', 'media_id', 'season_number', 'episode_number', unique=True),
+        Index('idx_watched_items_user_lookup', 'user_id', 'media_type', 'media_id', 'season_number', 'episode_number', unique=True),
         Index('idx_watched_items_marked_at', 'marked_at'),
     )
     
@@ -254,7 +277,31 @@ ScopedSession = scoped_session(SessionLocal)
 def init_db():
     """Initialize the database with all tables and indexes"""
     Base.metadata.create_all(bind=engine)
+    _add_user_columns()
     print("✅ Database initialized successfully with optimized indexes")
+
+
+def _add_user_columns():
+    """Databases made before accounts existed: give each personal table a user_id.
+
+    create_all doesn't change tables that already exist. Rows made before accounts keep
+    user_id NULL until the first account is created, which takes them over.
+    """
+    old_indexes = {
+        MyList: 'idx_mylist_type_id',
+        WatchHistory: 'idx_watch_history_lookup',
+        WatchedItems: 'idx_watched_items_lookup',
+    }
+    for model, old_index in old_indexes.items():
+        table = model.__tablename__
+        columns = {column['name'] for column in inspect(engine).get_columns(table)}
+        with engine.begin() as conn:
+            if 'user_id' not in columns:
+                conn.execute(text(f'ALTER TABLE {table} ADD COLUMN user_id INTEGER'))
+            # The old unique index would stop two people from saving the same title
+            conn.execute(text(f'DROP INDEX IF EXISTS {old_index}'))
+        for index in model.__table__.indexes:
+            index.create(bind=engine, checkfirst=True)
 
 
 def get_db():

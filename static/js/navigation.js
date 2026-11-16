@@ -78,7 +78,8 @@ function filterByType(type) {
     // Reset genre filter when changing type filter
     currentGenreFilter = 'all';
     updateActiveGenreChip('all');
-    
+    removeGenreFilterIndicator();
+
     // Update active state on nav links
     updateActiveNavLink(type);
     
@@ -96,6 +97,11 @@ function filterByType(type) {
         allRows.forEach(row => {
             row.style.display = 'block';
             row.classList.remove('filtered-view');
+            // Undo the renaming done by showNewPopular()
+            const title = row.querySelector('.row-title');
+            if (title && title.dataset.originalTitle) {
+                title.textContent = title.dataset.originalTitle;
+            }
             const cards = row.querySelectorAll('.title-card');
             cards.forEach(card => {
                 card.style.display = '';
@@ -155,20 +161,54 @@ function updateActiveNavLink(type) {
 }
 
 function showNewPopular() {
+    // Clear any Movies/TV/genre filter first, so all rows are back
+    filterByType('all');
+    removeGenreFilterIndicator();
+
     // Show all content and highlight as "New & Popular"
     const allSections = document.querySelectorAll('.content-row');
     allSections.forEach(section => {
-        section.style.display = 'block';
         const title = section.querySelector('.row-title');
-        if (title.textContent.includes('Movies')) {
+        if (!title) return;
+        // Keep the original title so filterByType('all') can restore it
+        if (!title.dataset.originalTitle) {
+            title.dataset.originalTitle = title.textContent;
+        }
+        if (title.dataset.originalTitle.includes('Movies')) {
             title.textContent = 'New & Popular Movies';
-        } else if (title.textContent.includes('TV')) {
+        } else if (title.dataset.originalTitle.includes('TV')) {
             title.textContent = 'New & Popular TV Shows';
         }
     });
-    
+
+    // filterByType('all') highlighted Home; move the highlight to New & Popular
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.toggle('active', (link.getAttribute('onclick') || '').includes('showNewPopular'));
+    });
+
     // Scroll to top of content
-    document.querySelector('.content-row').scrollIntoView({ behavior: 'smooth' });
+    const firstRow = document.querySelector('.content-row');
+    if (firstRow) {
+        firstRow.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+// Insert filter results and status strips below the genre tabs, in the order
+// tabs -> status strips (filter, genre, loading, errors) -> results. Falls back to
+// right after the hero on pages without the tab bar.
+function insertBelowFilters(element) {
+    const anchor = document.getElementById('genreFilterBar') || document.querySelector('.hero-banner');
+    if (!anchor) {
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) mainContent.insertBefore(element, mainContent.firstChild);
+        return;
+    }
+    // Status strips stack in the order they were added; results go after all of them
+    let after = anchor;
+    while (after.nextElementSibling && after.nextElementSibling.classList.contains('filter-indicator')) {
+        after = after.nextElementSibling;
+    }
+    after.parentNode.insertBefore(element, after.nextSibling);
 }
 
 function addFilterIndicator(filterType) {
@@ -190,19 +230,7 @@ function addFilterIndicator(filterType) {
         </div>
     `;
     
-    // Insert after hero banner
-    const heroBanner = document.querySelector('.hero-banner');
-    if (heroBanner && heroBanner.nextSibling) {
-        heroBanner.parentNode.insertBefore(indicator, heroBanner.nextSibling);
-    } else if (heroBanner) {
-        heroBanner.parentNode.appendChild(indicator);
-    } else {
-        // If no hero banner, insert at the beginning of main content
-        const mainContent = document.querySelector('.main-content');
-        if (mainContent && mainContent.firstChild) {
-            mainContent.insertBefore(indicator, mainContent.firstChild);
-        }
-    }
+    insertBelowFilters(indicator);
 }
 
 function removeFilterIndicator() {
@@ -213,6 +241,11 @@ function removeFilterIndicator() {
 }
 
 function updateActiveGenreChip(genre) {
+    // Genre tab bar under the hero (index.html)
+    document.querySelectorAll('.genre-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.genre === genre);
+    });
+
     const allItems = document.querySelectorAll('.genre-item');
     allItems.forEach(item => {
         item.classList.remove('active');
@@ -254,10 +287,7 @@ function addGenreFilterIndicator(genre) {
         </div>
     `;
     
-    const genreBar = document.getElementById('genreFilterBar');
-    if (genreBar && genreBar.nextSibling) {
-        genreBar.parentNode.insertBefore(indicator, genreBar.nextSibling);
-    }
+    insertBelowFilters(indicator);
 }
 
 function removeGenreFilterIndicator() {
@@ -267,22 +297,28 @@ function removeGenreFilterIndicator() {
     }
 }
 
-// Fetch filtered content from database
-async function fetchFilteredContent(type) {
+// Fetch filtered content from database (Movies / TV Shows tabs).
+// append=true is "Load More": the next page is added below the current cards.
+async function fetchFilteredContent(type, page = 1, append = false) {
     const targetType = type === 'movie' ? 'movie' : 'series';
     const filterLabel = type === 'movie' ? 'Movies' : 'TV Shows';
     
-    // Reset pagination
-    currentPage = 1;
+    currentPage = page;
     currentType = targetType;
     currentGenre = null;
     
-    // Show loading indicator
-    showLoadingIndicator(`Loading ${filterLabel}...`);
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    if (append && loadMoreBtn) {
+        // Show loading on the button
+        loadMoreBtn.disabled = true;
+        loadMoreBtn.innerHTML = 'Loading...';
+    } else {
+        showLoadingIndicator(`Loading ${filterLabel}...`);
+    }
     
     try {
         // Make API call to get filtered data
-        const response = await fetch(`/api/filter?type=${targetType}&page=${currentPage}&limit=16`);
+        const response = await fetch(`/api/filter?type=${targetType}&page=${page}`);
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -307,11 +343,7 @@ async function fetchFilteredContent(type) {
                 <div id="load-more-container" style="display: none;"></div>
             `;
             
-            // Insert after hero banner
-            const heroBanner = document.querySelector('.hero-banner');
-            if (heroBanner && heroBanner.nextSibling) {
-                heroBanner.parentNode.insertBefore(filteredContainer, heroBanner.nextSibling);
-            }
+            insertBelowFilters(filteredContainer);
         }
         
         // Hide all original rows
@@ -325,16 +357,12 @@ async function fetchFilteredContent(type) {
         // Show filtered container
         filteredContainer.style.display = 'block';
         
-        // Update title
-        const titleElement = document.getElementById('filtered-row-title');
-        if (titleElement) {
-            titleElement.textContent = `${filterLabel} (${data.items.length} items)`;
-        }
-        
-        // Clear and populate filtered slider
+        // Populate filtered slider (cleared first unless appending)
         const filteredSlider = document.getElementById('filtered-slider');
         if (filteredSlider) {
-            filteredSlider.innerHTML = '';
+            if (!append) {
+                filteredSlider.innerHTML = '';
+            }
             
             // Create cards from API data
             data.items.forEach(item => {
@@ -342,23 +370,57 @@ async function fetchFilteredContent(type) {
                 filteredSlider.appendChild(card);
             });
         }
+        const shown = filteredSlider ? filteredSlider.children.length : data.items.length;
+        
+        // Update title
+        const titleElement = document.getElementById('filtered-row-title');
+        if (titleElement) {
+            titleElement.textContent = `${filterLabel} (${shown} of ${data.total})`;
+        }
+        
+        // Add or update "Load More" button
+        const loadMoreContainer = document.getElementById('load-more-container');
+        if (loadMoreContainer) {
+            if (data.has_more && data.items.length > 0) {
+                loadMoreContainer.innerHTML = `
+                    <button id="load-more-btn" class="load-more-button" onclick="loadMoreFilteredContent()">
+                        Load More
+                    </button>
+                `;
+                loadMoreContainer.style.display = 'block';
+            } else {
+                loadMoreContainer.style.display = 'none';
+            }
+        }
         
         // Remove loading indicator
         removeLoadingIndicator();
         
         // Add filter indicator
-        addFilterIndicator(`${filterLabel} - Showing ${data.items.length} of ${data.total} total`);
+        addFilterIndicator(`${filterLabel} - Showing ${shown} of ${data.total} total`);
         
-        // Scroll to filtered section
-        setTimeout(() => {
-            filteredContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
+        // Scroll to filtered section (only if not appending)
+        if (!append) {
+            setTimeout(() => {
+                (document.getElementById('genreFilterBar') || filteredContainer).scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
         
     } catch (error) {
         console.error('Error fetching filtered content:', error);
         removeLoadingIndicator();
+        if (append && loadMoreBtn) {
+            loadMoreBtn.disabled = false;
+            loadMoreBtn.innerHTML = 'Load More';
+        }
         showErrorMessage(`Failed to load ${filterLabel}. Please try again.`);
     }
+}
+
+// Load the next page for the current Movies / TV Shows tab
+function loadMoreFilteredContent() {
+    if (currentFilter !== 'movie' && currentFilter !== 'tv') return;
+    fetchFilteredContent(currentFilter, currentPage + 1, true);
 }
 
 // Fetch genre-filtered content from database
@@ -379,8 +441,8 @@ async function fetchGenreFilteredContent(genre, page = 1, append = false) {
     
     try {
         // Fetch both movies and series with this genre
-        const movieResponse = await fetch(`/api/filter?type=movie&genre=${encodeURIComponent(genre)}&page=${page}&limit=16`);
-        const seriesResponse = await fetch(`/api/filter?type=series&genre=${encodeURIComponent(genre)}&page=${page}&limit=16`);
+        const movieResponse = await fetch(`/api/filter?type=movie&genre=${encodeURIComponent(genre)}&page=${page}`);
+        const seriesResponse = await fetch(`/api/filter?type=series&genre=${encodeURIComponent(genre)}&page=${page}`);
         
         if (!movieResponse.ok || !seriesResponse.ok) {
             throw new Error('Failed to fetch genre content');
@@ -416,11 +478,7 @@ async function fetchGenreFilteredContent(genre, page = 1, append = false) {
                 <div id="load-more-container"></div>
             `;
             
-            // Insert after hero banner
-            const heroBanner = document.querySelector('.hero-banner');
-            if (heroBanner && heroBanner.nextSibling) {
-                heroBanner.parentNode.insertBefore(filteredContainer, heroBanner.nextSibling);
-            }
+            insertBelowFilters(filteredContainer);
         }
         
         // Hide all original rows
@@ -481,7 +539,7 @@ async function fetchGenreFilteredContent(genre, page = 1, append = false) {
         // Scroll to filtered section (only if not appending)
         if (!append) {
             setTimeout(() => {
-                filteredContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                (document.getElementById('genreFilterBar') || filteredContainer).scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 100);
         }
         
@@ -566,10 +624,7 @@ function showLoadingIndicator(message) {
             <span class="filter-indicator-text">${message}</span>
 			</div>
 			`;
-    const heroBanner = document.querySelector('.hero-banner');
-    if (heroBanner && heroBanner.nextSibling) {
-        heroBanner.parentNode.insertBefore(indicator, heroBanner.nextSibling);
-    }
+    insertBelowFilters(indicator);
 }
 
 // Remove loading indicator
@@ -595,10 +650,7 @@ function showErrorMessage(message) {
         </div>
     `;
     
-    const heroBanner = document.querySelector('.hero-banner');
-    if (heroBanner && heroBanner.nextSibling) {
-        heroBanner.parentNode.insertBefore(indicator, heroBanner.nextSibling);
-    }
+    insertBelowFilters(indicator);
     
     // Auto-remove after 5 seconds
     setTimeout(() => {

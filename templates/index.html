@@ -6,13 +6,17 @@
     <meta name="theme-color" content="#141414">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Myflix</title>
-    <link rel="stylesheet" href="/css/index.css">
-    <link rel="stylesheet" href="/css/modal.css">
-    <link rel="stylesheet" href="/css/watch-mark.css">
+    <title>HOME FLIX</title>
+    <link rel="stylesheet" href="/css/index.css?v={{ asset_version }}">
+    <link rel="stylesheet" href="/css/modal.css?v={{ asset_version }}">
+    <link rel="stylesheet" href="/css/title-info.css?v={{ asset_version }}">
+    <link rel="stylesheet" href="/css/watch-mark.css?v={{ asset_version }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <!-- HomeFlix theme: loaded last so it applies on top of the page's own styles -->
+    <link rel="stylesheet" href="/css/theme.css?v={{ asset_version }}">
 </head>
 <body>
     <header class="navbar" id="navbar">
@@ -22,45 +26,20 @@
                     <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" fill="currentColor"/>
                 </svg>
             </button>
-            <a href="/" class="netflix-logo">
-                MYFLIX
+            <a href="/" class="netflix-logo hf-logo" aria-label="HOME FLIX home">
+                <svg class="hf-logo-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3.5 29 14v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V14z" fill="#E50914"/><path d="M13 13v10l8.5-5z" fill="#fff"/></svg>
+                <span>MEHDI<span class="hf-logo-accent">FLIX</span></span>
             </a>
             <nav class="main-nav">
                 <a href="javascript:void(0)" class="nav-link active" onclick="filterByType('all')">Home</a>
                 <a href="javascript:void(0)" class="nav-link" onclick="filterByType('tv')">TV Shows</a>
                 <a href="javascript:void(0)" class="nav-link" onclick="filterByType('movie')">Movies</a>
                 <a href="javascript:void(0)" class="nav-link" onclick="showNewPopular()">New & Popular</a>
+                <a href="/top" class="nav-link">Top 250</a>
                 <a href="javascript:void(0)" class="nav-link" onclick="showMyList()">My List</a>
             </nav>
         </div>
         <div class="navbar-right">
-            <!-- Genre List Menu -->
-            <div class="genre-list-container">
-                <button class="genre-list-trigger" id="genreListTrigger">
-                    <span id="genreListLabel">Genres</span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M7 10l5 5 5-5z" fill="currentColor"/>
-                    </svg>
-                </button>
-                <div class="genre-list-menu" id="genreListMenu">
-                    <a href="javascript:void(0)" class="genre-item active" onclick="selectGenre('all', 'All Genres')">All Genres</a>
-                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Action', 'Action')">Action</a>
-                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Comedy', 'Comedy')">Comedy</a>
-                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Drama', 'Drama')">Drama</a>
-                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Fantasy', 'Fantasy')">Fantasy</a>
-                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Horror', 'Horror')">Horror</a>
-                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Mystery', 'Mystery')">Mystery</a>
-                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Romance', 'Romance')">Romance</a>
-                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Sci-Fi', 'Sci-Fi')">Sci-Fi</a>
-                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Thriller', 'Thriller')">Thriller</a>
-                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Adventure', 'Adventure')">Adventure</a>
-                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Crime', 'Crime')">Crime</a>
-                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Animation', 'Animation')">Animation</a>
-                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Documentary', 'Documentary')">Documentary</a>
-                    <a href="javascript:void(0)" class="genre-item" onclick="selectGenre('Family', 'Family')">Family</a>
-                </div>
-            </div>
-            
             <div class="search-container">
                 <button class="search-toggle" onclick="toggleSearch()">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -70,11 +49,15 @@
                 <input type="text" id="searchInput" placeholder="Search titles, people, genres..." class="search-input" autocomplete="off" spellcheck="false">
                 <div class="search-suggestions" id="searchSuggestions"></div>
             </div>
-            <div class="profile-menu">
-                <div class="profile-avatar">
-                    <div class="avatar-icon">U</div>
+            <details class="profile-menu">
+                <summary class="profile-avatar" aria-label="Account">
+                    <div class="avatar-icon">{{ (current_username or "?")[0] | upper }}</div>
+                </summary>
+                <div class="profile-dropdown">
+                    <div class="profile-name">{{ current_username }}</div>
+                    <form method="post" action="/logout"><button type="submit" class="profile-signout">Sign out</button></form>
                 </div>
-            </div>
+            </details>
         </div>
     </header>
 
@@ -84,6 +67,7 @@
         <a href="javascript:void(0)" class="nav-link" onclick="filterByType('tv'); toggleMobileMenu();">TV Shows</a>
         <a href="javascript:void(0)" class="nav-link" onclick="filterByType('movie'); toggleMobileMenu();">Movies</a>
         <a href="javascript:void(0)" class="nav-link" onclick="showNewPopular(); toggleMobileMenu();">New & Popular</a>
+        <a href="/top" class="nav-link">Top 250</a>
         <a href="javascript:void(0)" class="nav-link" onclick="showMyList(); toggleMobileMenu();">My List</a>
     </nav>
 
@@ -121,25 +105,27 @@
                     <div class="hero-logo">
                         <h1 class="hero-title">{{ trending_movies[0].title }}</h1>
                     </div>
+                    {# hero-banner.js swaps this text as the banner rotates #}
+                    <p class="hero-overview">{{ trending_movies[0].overview or '' }}</p>
                     {% else %}
                     <div class="hero-logo">
-                        <h1 class="hero-title">Welcome to Myflix</h1>
+                        <h1 class="hero-title">Welcome to HOME FLIX</h1>
                     </div>
                     <p class="hero-overview">Unlimited movies, TV shows, and more.</p>
                     {% endif %}
-                    
+
                     <div class="hero-buttons">
                         <button class="btn btn-primary" id="heroPlayBtn">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M8 5v14l11-7z" fill="currentColor"/>
                             </svg>
-                            Play
+                            Watch now
                         </button>
                         <button class="btn btn-secondary" id="moreInfoBtn">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="currentColor"/>
                             </svg>
-                            <span id="moreInfoText">More Info</span>
+                            <span id="moreInfoText">More info</span>
                         </button>
                         
                         <!-- Netflix-style additional buttons -->
@@ -176,6 +162,16 @@
                 <div class="hero-vignette"></div>
             </div>
         </section>
+
+        <!-- Genre tabs: filterByGenre() in navigation.js; the genre filter indicator is inserted after #genreFilterBar -->
+        <nav class="genre-tabs" id="genreFilterBar" aria-label="Genres">
+            <div class="genre-tabs-scroll">
+                <button type="button" class="genre-tab active" data-genre="all" onclick="filterByGenre('all')">All</button>
+                {% for genre in ['Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Family', 'Fantasy', 'Horror', 'Mystery', 'Romance', 'Sci-Fi', 'Thriller'] %}
+                <button type="button" class="genre-tab" data-genre="{{ genre }}" onclick="filterByGenre({{ genre|tojson|forceescape }})">{{ genre }}</button>
+                {% endfor %}
+            </div>
+        </nav>
 
         <!-- Continue Watching Row -->
         {% if continue_watching and continue_watching|length > 0 %}
@@ -293,10 +289,14 @@
                     </div>
                     {% endfor %}
                 </div>
+                {# Trending rows load trending_limit at a time; content-loader.js hides this when there are no more #}
+                {% if trending_movies|length >= trending_limit %}
+                <button class="load-more-button" onclick="loadMoreTrending('movie', this)">Show More</button>
+                {% endif %}
             </div>
         </section>
 
-		
+
         <!-- Trending TV Shows Row -->
         <section class="content-row">
 			<div class="row-header">
@@ -348,6 +348,9 @@
                     </div>
                     {% endfor %}
                 </div>
+                {% if trending_series|length >= trending_limit %}
+                <button class="load-more-button" onclick="loadMoreTrending('series', this)">Show More</button>
+                {% endif %}
             </div>
         </section>
 
@@ -472,6 +475,7 @@
     <script src="/static/js/hero-banner.js"></script>
     <script src="/static/js/ui-components.js"></script>
     <script src="/static/js/title-cards.js"></script>
+    <script src="/static/js/title-info.js"></script>
     <script src="/static/js/content-loader.js"></script>
     <script src="/static/js/my-list.js"></script>
     <script src="/static/js/watch-mark.js"></script>

@@ -6,6 +6,11 @@ import os
 from dataclasses import dataclass
 from typing import Optional
 
+from dotenv import load_dotenv
+
+# Read settings such as TMDB_ACCESS_TOKEN from a .env file next to this one
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
+
 
 @dataclass
 class CacheConfig:
@@ -20,10 +25,7 @@ class CacheConfig:
 @dataclass
 class APIConfig:
     """API configuration"""
-    TMDB_ACCESS_TOKEN: str = os.getenv(
-        'TMDB_ACCESS_TOKEN',
-        'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI2YjUyNzU0MWNmODJlNjdhMmJhOGRmZTFmYjZiMDkwYyIsIm5iZiI6MTc1OTA3NDM4Mi44MDMsInN1YiI6IjY4ZDk1ODRlYWQzMTdmMmI2MWJiMDkxYSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.HnNxWDnTZIwhVWbXH8gpVfY1n6v0pse5z2A-KUSyI5I'
-    )
+    TMDB_ACCESS_TOKEN: str = os.getenv('TMDB_ACCESS_TOKEN', '')
     TMDB_BASE_URL: str = 'https://api.themoviedb.org/3'
     TMDB_IMAGE_BASE_URL: str = 'https://image.tmdb.org/t/p/w500'
     TMDB_BACKDROP_BASE_URL: str = 'https://image.tmdb.org/t/p/w1280'
@@ -35,10 +37,19 @@ class APIConfig:
     MAX_RETRIES: int = 3
 
 
+def _database_url() -> str:
+    url = os.getenv('DATABASE_URL', 'sqlite:///homeflix.db')
+    # Neon and most hosts give postgres:// or postgresql:// links; SQLAlchemy needs the driver named
+    for prefix in ('postgres://', 'postgresql://'):
+        if url.startswith(prefix):
+            return 'postgresql+psycopg://' + url[len(prefix):]
+    return url
+
+
 @dataclass
 class DatabaseConfig:
     """Database configuration"""
-    URL: str = os.getenv('DATABASE_URL', 'sqlite:///homeflix.db')
+    URL: str = _database_url()
     ECHO: bool = os.getenv('DB_ECHO', 'false').lower() == 'true'
     POOL_SIZE: int = int(os.getenv('DB_POOL_SIZE', '10'))
     MAX_OVERFLOW: int = int(os.getenv('DB_MAX_OVERFLOW', '20'))
@@ -50,9 +61,15 @@ class DatabaseConfig:
 class ServerConfig:
     """Flask server configuration"""
     HOST: str = os.getenv('FLASK_HOST', '0.0.0.0')
-    PORT: int = int(os.getenv('FLASK_PORT', '5000'))
+    # Fall back to PORT, which gunicorn_config.py and most hosts use
+    PORT: int = int(os.getenv('FLASK_PORT', os.getenv('PORT', '5000')))
     DEBUG: bool = os.getenv('FLASK_ENV', 'production') == 'development'
     THREADED: bool = True
+
+    # Invite code for creating accounts; empty = accounts can only be created from this PC
+    PASSWORD: str = os.getenv('HOMEFLIX_PASSWORD', '')
+    # Signs the login cookie; empty = a new random key each start (everyone signs in again)
+    SECRET_KEY: str = os.getenv('FLASK_SECRET_KEY', '')
     
     # Static folder paths
     CSS_FOLDER: str = 'css'
@@ -63,10 +80,13 @@ class ServerConfig:
 @dataclass
 class PaginationConfig:
     """Pagination settings"""
-    DEFAULT_PER_PAGE: int = 16
+    # Titles per row page and per Load More. 18 fills whole rows on wide screens
+    # (9 posters across); the filter API and navigation.js use this too.
+    DEFAULT_PER_PAGE: int = 18
     SEARCH_PER_PAGE: int = 15
     MAX_PER_PAGE: int = 50
-    TRENDING_LIMIT: int = 16
+    TRENDING_LIMIT: int = 18
+    TOP_LIST_SIZE: int = 250  # Titles on the /top page, per tab
 
 
 # Global config instances
@@ -89,38 +109,49 @@ def get_embed_sources(media_type: str, identifier: str, season: Optional[int] = 
     
     Returns:
         List of embed source URLs in priority order
+
+    Checked 2026-11-10 with Fight Club (550) and Breaking Bad S1E1 (1396).
+    Removed: xprime.tv and vidsrc.pro (connection reset), fmovies.gd, rivestream.org
+    and vidsrc.xyz (domains gone), vidsrc.me (same player as vidsrc.to).
+    vidsrc.su played the movie but had no servers for the episode, so it sits lower.
     """
     if media_type == 'movie':
         return [
-            f"https://xprime.tv/watch/{identifier}",
-            f"https://rivestream.org/watch?type=movie&id={identifier}",
+            f"https://streamimdb.ru/embed/movie/{identifier}",
             f"https://vidfast.pro/movie/{identifier}?autoPlay=true&nextButton=true&autoNext=true",
+            f"https://vidlink.pro/movie/{identifier}",
+            f"https://vidrock.net/movie/{identifier}",
+            f"https://vixsrc.to/movie/{identifier}",
+            f"https://vidsrc.su/embed/movie/{identifier}",
             f"https://vidsrc.to/embed/movie/{identifier}",
-            f"https://vidsrc.xyz/embed/movie?tmdb={identifier}",
-            f"https://vidsrc.pro/embed/movie/{identifier}",
             f"https://www.2embed.cc/embed/{identifier}",
             f"https://multiembed.mov/?video_id={identifier}&tmdb=1",
             f"https://autoembed.co/movie/tmdb/{identifier}",
         ]
     elif media_type == 'tv':
+        # Sources that need an episode start at S1E1
         return [
-            f"https://xprime.tv/watch/{identifier}",
-            f"https://rivestream.org/watch?type=tv&id={identifier}",
+            f"https://streamimdb.ru/embed/tv/{identifier}",
             f"https://vidfast.pro/tv/{identifier}?autoPlay=true&nextButton=true&autoNext=true",
-            f"https://vidsrc.me/embed/tv?tmdb={identifier}",
-            f"https://vidsrc.xyz/embed/tv?tmdb={identifier}",
-            f"https://vidsrc.pro/embed/tv/{identifier}",
-            f"https://www.2embed.cc/embedtv/{identifier}",
+            f"https://vidlink.pro/tv/{identifier}/1/1",
+            f"https://vidrock.net/tv/{identifier}/1/1",
+            f"https://vixsrc.to/tv/{identifier}/1/1",
             f"https://vidsrc.to/embed/tv/{identifier}",
+            f"https://www.2embed.cc/embedtv/{identifier}",
+            f"https://multiembed.mov/?video_id={identifier}&tmdb=1&s=1&e=1",
+            f"https://autoembed.co/tv/tmdb/{identifier}-1-1",
         ]
     elif media_type == 'episode' and season is not None and episode is not None:
         return [
-            f"https://xprime.tv/watch/{identifier}/{season}/{episode}",
-            f"https://rivestream.org/watch?type=tv&id={identifier}&season={season}&episode={episode}",
+            f"https://streamimdb.ru/embed/tv/{identifier}/{season}/{episode}",
             f"https://vidfast.pro/tv/{identifier}/{season}/{episode}?autoPlay=true&nextButton=true&autoNext=true",
-            f"https://www.2embed.cc/embedtv/{identifier}&s={season}&e={episode}",
+            f"https://vidlink.pro/tv/{identifier}/{season}/{episode}",
+            f"https://vidrock.net/tv/{identifier}/{season}/{episode}",
+            f"https://vixsrc.to/tv/{identifier}/{season}/{episode}",
             f"https://vidsrc.to/embed/tv/{identifier}/{season}/{episode}",
+            f"https://www.2embed.cc/embedtv/{identifier}&s={season}&e={episode}",
             f"https://multiembed.mov/?video_id={identifier}&tmdb=1&s={season}&e={episode}",
             f"https://autoembed.co/tv/tmdb/{identifier}-{season}-{episode}",
+            f"https://vidsrc.su/embed/tv/{identifier}/{season}/{episode}",
         ]
     return []

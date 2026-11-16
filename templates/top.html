@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Top {{ list_size }} {{ 'Movies' if kind == 'movie' else 'TV Shows' }} - HOME FLIX</title>
+    <link rel="stylesheet" href="/css/index.css?v={{ asset_version }}">
+    <link rel="stylesheet" href="/css/modal.css?v={{ asset_version }}">
+    <link rel="stylesheet" href="/css/top.css?v={{ asset_version }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <!-- HomeFlix theme: loaded last so it applies on top of the page's own styles -->
+    <link rel="stylesheet" href="/css/theme.css?v={{ asset_version }}">
+</head>
+<body>
+    {% with active='top' %}{% include '_subpage_nav.html' %}{% endwith %}
+
+    <main class="top-page">
+        <header class="top-header">
+            <h1 class="top-title">Top {{ list_size }}</h1>
+            <p class="top-subtitle">
+                Ranked with IMDb's Top 250 formula: a weighted rating that needs plenty of votes,
+                calculated from TMDB ratings. Only titles you can watch on HOME FLIX are listed.
+            </p>
+            <nav class="genre-tabs top-tabs" aria-label="List">
+                <div class="genre-tabs-scroll">
+                    <a href="/top" class="genre-tab{% if kind == 'movie' %} active{% endif %}">Movies</a>
+                    <a href="/top?type=tv" class="genre-tab{% if kind == 'series' %} active{% endif %}">TV Shows</a>
+                </div>
+            </nav>
+        </header>
+
+        {% if titles %}
+        <ol class="top-list">
+            {% for title in titles %}
+            {% set page_url = ('/movie/' if kind == 'movie' else '/series/') ~ title.imdb_id %}
+            {% set watch_url = '/watch/movie/' ~ title.imdb_id if kind == 'movie' else '/watch/series/' ~ title.imdb_id ~ '/1/1' %}
+            <li class="top-item{% if title.rank <= 3 %} top-item-podium{% endif %}">
+                <span class="top-rank" aria-label="Rank {{ title.rank }}">{{ title.rank }}</span>
+                <a href="{{ page_url }}" class="top-poster">
+                    {% if title.poster_url %}
+                    <img src="{{ title.poster_url }}" alt="{{ title.title }}" loading="lazy">
+                    {% else %}
+                    <span class="top-poster-placeholder">{{ title.title[:1] }}</span>
+                    {% endif %}
+                </a>
+                <div class="top-info">
+                    <a href="{{ page_url }}" class="top-item-title">{{ title.title }}</a>
+                    <div class="top-meta">
+                        {% if title.year %}<span>{{ title.year }}</span>{% endif %}
+                        <span title="Average rating on TMDB">★ {{ "%.1f"|format(title.vote_average) }}</span>
+                        <span>{{ "{:,}".format(title.vote_count) }} votes</span>
+                    </div>
+                </div>
+                <div class="top-score" title="Weighted rating used for the ranking">
+                    <span class="top-score-value">{{ "%.2f"|format(title.weighted_rating) }}</span>
+                    <span class="top-score-label">score</span>
+                </div>
+                <a href="{{ watch_url }}" class="top-play" aria-label="Play {{ title.title }}">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8 5v14l11-7z" fill="currentColor"/>
+                    </svg>
+                </a>
+            </li>
+            {% endfor %}
+        </ol>
+        {% else %}
+        <p class="top-empty">No ranked titles yet: the catalogue needs ratings from TMDB. Check TMDB_ACCESS_TOKEN in .env and let the sync run.</p>
+        {% endif %}
+    </main>
+
+    <script src="/static/js/netflix.js"></script>
+    <script src="/static/js/ui-components.js"></script>
+    <script src="/static/js/my-list.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSearch();
+        });
+    </script>
+</body>
+</html>

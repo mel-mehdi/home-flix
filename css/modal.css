@@ -317,3 +317,135 @@
         background: #c5000a;
     }
 }
+
+/* ---------- My List as one row that scrolls left to right ----------
+   Placed last so it replaces the grid layout above at every screen size. */
+
+.my-list-modal-body {
+    position: relative;
+    flex: 0 0 auto; /* the popup hugs the row instead of stretching it */
+    overflow: hidden;
+    padding: 8px 0 24px;
+}
+
+.my-list-grid {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-padding: 0 32px;
+    padding: 16px 32px 12px; /* room for the hover lift */
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+
+.my-list-item {
+    flex: 0 0 200px;
+    min-width: 0; /* long titles are cut with "…" instead of widening the card (and its poster) */
+    scroll-snap-align: start;
+}
+
+.my-list-item:hover {
+    transform: translateY(-6px);
+}
+
+.my-list-count {
+    margin-left: 10px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: rgba(229, 9, 20, 0.15);
+    color: #ff6b72;
+    font-size: 15px;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+.my-list-scroll {
+    position: absolute;
+    top: 16px;
+    bottom: 76px; /* stops above the titles, level with the posters */
+    z-index: 2;
+    width: 56px;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s ease;
+}
+
+.my-list-scroll[hidden] {
+    display: none;
+}
+
+.my-list-scroll-prev {
+    left: 0;
+    background: linear-gradient(to right, rgba(20, 20, 20, 0.95), rgba(20, 20, 20, 0));
+}
+
+.my-list-scroll-next {
+    right: 0;
+    background: linear-gradient(to left, rgba(20, 20, 20, 0.95), rgba(20, 20, 20, 0));
+}
+
+.my-list-scroll svg {
+    padding: 6px;
+    border-radius: 50%;
+    background: rgba(8, 8, 8, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-sizing: content-box;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.my-list-scroll:hover svg {
+    background: #E50914;
+    border-color: #E50914;
+}
+
+/* Touch screens swipe the row; the arrows would only cover posters */
+@media (hover: none) {
+    .my-list-scroll {
+        display: none;
+    }
+}
+
+@media (max-width: 600px) {
+    .my-list-grid {
+        gap: 12px;
+        padding: 12px 16px;
+        scroll-padding: 0 16px;
+    }
+
+    .my-list-item {
+        flex-basis: 140px;
+    }
+
+    /* No hover on phones: keep Play and remove visible, sized for a 140px card */
+    .my-list-item-overlay {
+        opacity: 1;
+        padding: 8px;
+        gap: 6px;
+    }
+
+    .my-list-item-overlay .btn {
+        min-height: 34px;
+        padding: 0 10px;
+        gap: 4px;
+        font-size: 13px;
+    }
+
+    .my-list-item-overlay .btn-icon {
+        width: 34px;
+        min-width: 34px;
+        height: 34px;
+        padding: 0;
+    }
+
+    .my-list-item-overlay .btn svg {
+        width: 16px;
+        height: 16px;
+    }
+}

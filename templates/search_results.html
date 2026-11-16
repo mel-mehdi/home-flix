@@ -3,41 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Search Results: {{ query }} - Homeflix</title>
-    <link rel="stylesheet" href="/css/index.css">
-    <link rel="stylesheet" href="/css/modal.css">
-    <link rel="stylesheet" href="/css/watch-mark.css">
+    <title>Search Results: {{ query }} - HOME FLIX</title>
+    <link rel="stylesheet" href="/css/index.css?v={{ asset_version }}">
+    <link rel="stylesheet" href="/css/modal.css?v={{ asset_version }}">
+    <link rel="stylesheet" href="/css/watch-mark.css?v={{ asset_version }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <!-- HomeFlix theme: loaded last so it applies on top of the page's own styles -->
+    <link rel="stylesheet" href="/css/theme.css?v={{ asset_version }}">
 </head>
 <body>
     <!-- Netflix-style Navbar -->
-    <nav class="navbar" id="navbar">
-        <div class="navbar-left">
-            <a href="/" class="netflix-logo">HOMEFLIX</a>
-            <div class="main-nav">
-                <a href="/" class="nav-link">Home</a>
-            </div>
-        </div>
-        
-        <div class="navbar-right">
-            <!-- Search -->
-            <div class="search-container">
-                <button class="search-toggle" onclick="toggleSearch()" aria-label="Search">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </button>
-                <input type="text" class="search-input" id="searchInput" placeholder="Titles, people, genres" value="{{ query }}">
-                <div class="search-suggestions" id="searchSuggestions"></div>
-            </div>
-            
-            <!-- Profile Menu -->
-            <div class="profile-menu">
-                <div class="profile-avatar">
-                    <div class="avatar-icon">H</div>
-                </div>
-            </div>
-        </div>
-    </nav>
+    {% with active=none %}{% include '_subpage_nav.html' %}{% endwith %}
 
     <!-- Main Content -->
     <div class="main-content" style="margin-top: 100px;">
@@ -177,7 +153,7 @@
         // Initialize search functionality
         document.addEventListener('DOMContentLoaded', function() {
             initializeSearch();
-            loadMyList();
+            initializeMyListButtons();
         });
     </script>
 </body>

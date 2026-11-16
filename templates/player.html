@@ -6,9 +6,9 @@
     <meta name="theme-color" content="#000000">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>{{ title }} - Myflix</title>
-    <link rel="stylesheet" href="/css/player.css">
-    <link rel="stylesheet" href="/css/watch-mark.css">
+    <title>{{ title }} - HOME FLIX</title>
+    <link rel="stylesheet" href="/css/player.css?v={{ asset_version }}">
+    <link rel="stylesheet" href="/css/watch-mark.css?v={{ asset_version }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -43,8 +43,8 @@
                     mozallowfullscreen
                     allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
                     referrerpolicy="origin"
-                    onload="hideLoading()"
-                    onerror="showError()"></iframe>
+                    onload="typeof hideLoading === 'function' && hideLoading()"
+                    onerror="typeof showError === 'function' && showError()"></iframe>
             
             <div class="player-controls" id="topControls">
                 <div class="top-bar">
@@ -120,15 +120,17 @@
                     <p class="tip-title">🔗 Still not working? Try these direct links:</p>
                     <div class="direct-link-buttons">
                         {% if tmdb_id %}
-                        <a href="https://vidsrc.to/embed/{{ 'movie' if type == 'movie' else 'tv' }}/{{ tmdb_id }}{% if season %}/{{ season }}/{{ episode }}{% endif %}" 
-                           target="_blank" 
+                        {# These two also play when opened on their own; most other sources only play inside a frame #}
+                        {% set episode_path = '' if type == 'movie' else '/' ~ (season or 1) ~ '/' ~ (episode or 1) %}
+                        <a href="https://vidlink.pro/{{ 'movie' if type == 'movie' else 'tv' }}/{{ tmdb_id }}{{ episode_path }}"
+                           target="_blank" rel="noopener noreferrer"
                            class="direct-link-btn">
-                            Open VidSrc.to
+                            Open VidLink
                         </a>
-                        <a href="https://www.2embed.cc/{% if type == 'movie' %}embed{% else %}embedtv{% endif %}/{{ imdb_id }}{% if season %}&s={{ season }}&e={{ episode }}{% endif %}" 
-                           target="_blank" 
+                        <a href="https://vidrock.net/{{ 'movie' if type == 'movie' else 'tv' }}/{{ tmdb_id }}{{ episode_path }}"
+                           target="_blank" rel="noopener noreferrer"
                            class="direct-link-btn">
-                            Open 2Embed
+                            Open VidRock
                         </a>
                         {% endif %}
                     </div>
@@ -147,8 +149,6 @@
         let videoDuration = 0;
         
         const videoType = "{{ type }}";
-        // Parse the tmdb/imdb id from the original embed_url if present
-        const videoId = ("{{ embed_url }}" || "").match(/(?:tmdb=|\/)(tt\d+|\d+)/)?.[1] || '';
         const videoTitle = "{{ title }}";
         const imdbId = "{{ imdb_id }}";
         const tmdbId = "{{ tmdb_id }}";
@@ -269,7 +269,8 @@
         
         // Load saved progress on page load
         function loadSavedProgress() {
-            let url = `/api/watch_progress/${videoType === 'episode' ? 'series' : videoType}/${videoId}`;
+            // Progress is saved under the IMDB id (see saveProgress), so look it up the same way
+            let url = `/api/watch_progress/${videoType === 'episode' ? 'series' : videoType}/${imdbId}`;
             
             // Add episode params for series
             if (videoType === 'episode' && typeof season !== 'undefined' && typeof episode !== 'undefined') {
@@ -354,7 +355,9 @@
         window.markAsWatched = function() {
             const data = {
                 type: videoType === 'episode' ? 'series' : videoType,
-                id: videoId
+                id: imdbId,
+                tmdb_id: tmdbId,
+                title: seriesTitle
             };
             
             if (videoType === 'episode' && typeof season !== 'undefined' && typeof episode !== 'undefined') {

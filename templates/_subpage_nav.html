@@ -1,0 +1,82 @@
+{# Top nav for every page except the home page (index.html has its own, which filters in place).
+   The links open the home page on the matching tab; init.js reads ?filter= and ?view=.
+   Set `active` to 'tv' or 'movie' to highlight a link, and `solid` for an opaque bar. #}
+{% set nav_links = [
+    ('home', 'Home', '/'),
+    ('tv', 'TV Shows', '/?filter=tv'),
+    ('movie', 'Movies', '/?filter=movie'),
+    ('new', 'New & Popular', '/?view=new-popular'),
+    ('top', 'Top 250', '/top'),
+] %}
+<header class="navbar" id="navbar"{% if solid %} style="background: rgba(8, 8, 8, 0.92);"{% endif %}>
+    <div class="navbar-left">
+        <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleMobileMenu()" aria-label="Menu">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" fill="currentColor"/>
+            </svg>
+        </button>
+        <a href="/" class="netflix-logo hf-logo" aria-label="HOME FLIX home">
+            <svg class="hf-logo-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3.5 29 14v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V14z" fill="#E50914"/><path d="M13 13v10l8.5-5z" fill="#fff"/></svg>
+            <span>MEHDI<span class="hf-logo-accent">FLIX</span></span>
+        </a>
+        <nav class="main-nav">
+            {% for key, label, href in nav_links %}
+            <a href="{{ href }}" class="nav-link{% if active == key %} active{% endif %}">{{ label }}</a>
+            {% endfor %}
+            <a href="/?view=my-list" class="nav-link" onclick="if (typeof showMyList === 'function') { showMyList(); return false; }">My List</a>
+        </nav>
+    </div>
+
+    <div class="navbar-right">
+        <!-- Search -->
+        <div class="search-container">
+            <button class="search-toggle" onclick="toggleSearch()" aria-label="Search">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <input type="text" class="search-input" id="searchInput" placeholder="Titles, people, genres" value="{{ query or '' }}">
+            <div class="search-suggestions" id="searchSuggestions"></div>
+        </div>
+
+        <!-- Profile Menu -->
+        <details class="profile-menu">
+            <summary class="profile-avatar" aria-label="Account">
+                <div class="avatar-icon">{{ (current_username or "?")[0] | upper }}</div>
+            </summary>
+            <div class="profile-dropdown">
+                <div class="profile-name">{{ current_username }}</div>
+                <form method="post" action="/logout"><button type="submit" class="profile-signout">Sign out</button></form>
+            </div>
+        </details>
+    </div>
+</header>
+
+<!-- Mobile Navigation Menu -->
+<nav class="mobile-nav-menu" id="mobileNavMenu">
+    {% for key, label, href in nav_links %}
+    <a href="{{ href }}" class="nav-link{% if active == key %} active{% endif %}">{{ label }}</a>
+    {% endfor %}
+    <a href="/?view=my-list" class="nav-link" onclick="if (typeof showMyList === 'function') { toggleMobileMenu(); showMyList(); return false; }">My List</a>
+</nav>
+
+<script>
+    // Same behaviour as toggleMobileMenu in navigation.js, which only the home page loads
+    function toggleMobileMenu() {
+        const menu = document.getElementById('mobileNavMenu');
+        const toggle = document.getElementById('mobileMenuToggle');
+        const isOpen = menu.classList.toggle('active');
+        toggle.innerHTML = isOpen
+            ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/></svg>'
+            : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" fill="currentColor"/></svg>';
+    }
+
+    // Close the menu when tapping outside it
+    document.addEventListener('click', function(event) {
+        const menu = document.getElementById('mobileNavMenu');
+        const toggle = document.getElementById('mobileMenuToggle');
+        if (menu.classList.contains('active') && !menu.contains(event.target) && !toggle.contains(event.target)) {
+            toggleMobileMenu();
+        }
+    });
+</script>

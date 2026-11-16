@@ -43,14 +43,12 @@ function setupTitleCardInteractions() {
         // More info button
         if (e.target.closest('.title-card-expand-button')) {
             e.stopPropagation();
-            const title = card.dataset.title;
-            const type = card.dataset.type;
-            showTitleInfo(title, type);
+            openTitleInfo(card.dataset.type, card.dataset.id);
             return;
         }
 
-        // Card click (if not clicking any button)
-        if (!e.target.closest('.title-card-play-button, .title-card-add-button, .title-card-like-button, .title-card-expand-button')) {
+        // Card click (if not clicking any button; the Continue Watching remove button has its own onclick)
+        if (!e.target.closest('.title-card-play-button, .title-card-add-button, .title-card-like-button, .title-card-expand-button, .remove-from-continue-watching')) {
             const type = card.dataset.type;
             const id = card.dataset.id;
             if (type === 'series') {
@@ -97,12 +95,6 @@ function toggleLike(title, button) {
         if (typeof homeflixApp !== 'undefined') {
             homeflixApp.showNotification(`You liked "${title}"`, 'success');
         }
-    }
-}
-
-function showTitleInfo(title, type) {
-    if (typeof homeflixApp !== 'undefined') {
-        homeflixApp.showNotification(`More info feature for "${title}" is coming soon!`, 'info');
     }
 }
 

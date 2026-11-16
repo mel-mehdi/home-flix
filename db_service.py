@@ -1,12 +1,15 @@
-from database import Movie, TVShow, get_db, close_db, MyList, WatchHistory
-from sqlalchemy import text, desc
+from database import Movie, TVShow, get_db, close_db, MyList, WatchHistory, WatchedItems, User
+from sqlalchemy import text, desc, func
 from sqlalchemy.exc import IntegrityError
+from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from utils import measure_time
 import logging
 
 logger = logging.getLogger(__name__)
+
+_DUMMY_HASH = generate_password_hash('not a real password')
 
 
 class DatabaseService:
@@ -15,15 +18,94 @@ class DatabaseService:
     Context manager for automatic resource cleanup
     """
     
-    def __init__(self):
+    def __init__(self, user_id: Optional[int] = None):
         self.db = get_db()
-    
+        # My List, watch history and watched marks are read and written for this user only
+        self.user_id = user_id
+
     def __enter__(self):
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         close_db(self.db)
-    
+
+    def _is_sqlite(self) -> bool:
+        return self.db.get_bind().dialect.name == 'sqlite'
+
+    def _mine(self, model):
+        """Query a personal table, limited to this user's rows"""
+        return self.db.query(model).filter(model.user_id == self.user_id)
+
+    # Account operations
+    def get_user(self, user_id: int) -> Optional[User]:
+        return self.db.query(User).filter(User.id == user_id).first()
+
+    def get_user_by_username(self, username: str) -> Optional[User]:
+        return self.db.query(User).filter(User.username == username.lower()).first()
+
+    def create_user(self, username: str, password: str) -> Optional[User]:
+        """Create an account; None if the username is taken.
+
+        The first account takes over the My List, history and watched marks
+        saved before accounts existed.
+        """
+        is_first = self.db.query(User).count() == 0
+        user = User(username=username.lower(), password_hash=generate_password_hash(password))
+        self.db.add(user)
+        try:
+            self.db.flush()
+        except IntegrityError:
+            self.db.rollback()
+            return None
+        if is_first:
+            for model in (MyList, WatchHistory, WatchedItems):
+                self.db.query(model).filter(model.user_id.is_(None)).update(
+                    {model.user_id: user.id}, synchronize_session=False)
+        self.db.commit()
+        self.db.refresh(user)  # so its fields stay readable after the session closes
+        return user
+
+    def check_password(self, username: str, password: str) -> Optional[User]:
+        """The user when the password matches, else None"""
+        user = self.get_user_by_username(username)
+        if user is None:
+            # Hash anyway so a wrong username takes as long as a wrong password
+            check_password_hash(_DUMMY_HASH, password)
+            return None
+        return user if check_password_hash(user.password_hash, password) else None
+
+    def _upsert(self, model, data: Dict[str, Any], pending: Dict[Any, Any]):
+        """Add or update one catalogue title.
+
+        Finds the stored row by IMDb ID, or else by TMDB ID: sources sometimes list a title
+        under a new IMDb ID, and inserting it again broke the unique TMDB ID and the whole sync.
+        `pending` holds rows added earlier in the same batch, which queries can't see yet
+        (autoflush is off).
+        """
+        imdb_id, tmdb_id = data.get('imdb_id'), data.get('tmdb_id')
+        row = pending.get(('imdb', imdb_id)) or self.db.query(model).filter(model.imdb_id == imdb_id).first()
+        if row is None and tmdb_id:
+            row = pending.get(('tmdb', tmdb_id)) or self.db.query(model).filter(model.tmdb_id == tmdb_id).first()
+            if row is not None:
+                # Keep the stored IMDb ID: My List and watch history refer to it
+                data = {k: v for k, v in data.items() if k != 'imdb_id'}
+        elif row is not None and tmdb_id and tmdb_id != row.tmdb_id:
+            if pending.get(('tmdb', tmdb_id)) or self.db.query(model.id).filter(model.tmdb_id == tmdb_id).first():
+                data = {k: v for k, v in data.items() if k != 'tmdb_id'}  # another row already has it
+
+        if row is None:
+            row = model(**data)
+            self.db.add(row)
+        else:
+            for key, value in data.items():
+                if hasattr(row, key) and getattr(row, key) != value:
+                    setattr(row, key, value)
+            row.updated_at = datetime.utcnow()
+        pending[('imdb', row.imdb_id)] = row
+        if row.tmdb_id:
+            pending[('tmdb', row.tmdb_id)] = row
+        return row
+
     # Movie operations
     def get_movie_by_imdb_id(self, imdb_id):
         """Get movie by IMDB ID"""
@@ -32,6 +114,12 @@ class DatabaseService:
     def get_movie_by_tmdb_id(self, tmdb_id):
         """Get movie by TMDB ID"""
         return self.db.query(Movie).filter(Movie.tmdb_id == tmdb_id).first()
+
+    def get_movies_by_tmdb_ids(self, tmdb_ids: List[int]) -> List[Dict[str, Any]]:
+        """Get movies for these TMDB IDs in the same order, skipping IDs not in the database"""
+        movies = self.db.query(Movie).filter(Movie.tmdb_id.in_(tmdb_ids)).all()
+        by_id = {movie.tmdb_id: movie.to_dict() for movie in movies}
+        return [by_id[tmdb_id] for tmdb_id in tmdb_ids if tmdb_id in by_id]
     
     def create_or_update_movie(self, movie_data: Dict[str, Any]) -> Movie:
         """
@@ -44,19 +132,7 @@ class DatabaseService:
             Movie object
         """
         try:
-            movie = self.get_movie_by_imdb_id(movie_data.get('imdb_id'))
-            
-            if movie:
-                # Update existing movie - only update if data has changed
-                for key, value in movie_data.items():
-                    if hasattr(movie, key) and getattr(movie, key) != value:
-                        setattr(movie, key, value)
-                movie.updated_at = datetime.utcnow()
-            else:
-                # Create new movie
-                movie = Movie(**movie_data)
-                self.db.add(movie)
-            
+            movie = self._upsert(Movie, movie_data, {})
             self.db.commit()
             self.db.refresh(movie)
             return movie
@@ -82,21 +158,10 @@ class DatabaseService:
         """
         try:
             processed_count = 0
-            # Use bulk operations for better performance
+            pending = {}
             for movie_data in movies_data:
                 try:
-                    movie = self.get_movie_by_imdb_id(movie_data.get('imdb_id'))
-                    
-                    if movie:
-                        # Update existing movie
-                        for key, value in movie_data.items():
-                            if hasattr(movie, key) and getattr(movie, key) != value:
-                                setattr(movie, key, value)
-                        movie.updated_at = datetime.utcnow()
-                    else:
-                        # Create new movie
-                        movie = Movie(**movie_data)
-                        self.db.add(movie)
+                    self._upsert(Movie, movie_data, pending)
                     processed_count += 1
                 except Exception as e:
                     logger.error(f"Error processing movie {movie_data.get('imdb_id')}: {e}")
@@ -125,25 +190,27 @@ class DatabaseService:
         offset = (page - 1) * per_page
         movies = self.db.query(Movie)\
             .filter(Movie.imdb_id.isnot(None))\
-            .order_by(desc(Movie.release_date))\
+            .order_by(desc(Movie.release_date).nullslast())\
             .offset(offset)\
             .limit(per_page)\
             .all()
         return [movie.to_dict() for movie in movies]
     
-    def get_trending_movies(self, per_page: int = 16) -> List[Dict[str, Any]]:
+    def get_trending_movies(self, per_page: int = 16, offset: int = 0) -> List[Dict[str, Any]]:
         """
         Get trending movies using composite index for fast retrieval
-        
+
         Args:
             per_page: Number of items to return
-            
+            offset: Number of items to skip (for the row's Show More button)
+
         Returns:
             List of trending movie dictionaries
         """
         movies = self.db.query(Movie)\
             .filter(Movie.is_trending == True, Movie.imdb_id.isnot(None))\
-            .order_by(desc(Movie.popularity))\
+            .order_by(desc(Movie.popularity).nullslast())\
+            .offset(offset)\
             .limit(per_page)\
             .all()
         return [movie.to_dict() for movie in movies]
@@ -169,7 +236,7 @@ class DatabaseService:
                 Movie.imdb_id.isnot(None),
                 Movie.genres.isnot(None)
             )\
-            .order_by(desc(Movie.popularity))\
+            .order_by(desc(Movie.popularity).nullslast())\
             .all()
         
         # Filter by genre in Python (SQLite JSON queries can be tricky)
@@ -228,8 +295,10 @@ class DatabaseService:
         """
         offset = (page - 1) * per_page
         
-        # Use FTS5 for lightning-fast full-text search
+        # Use FTS5 for lightning-fast full-text search (SQLite only; Postgres uses the LIKE search below)
         try:
+            if not self._is_sqlite():
+                raise LookupError('no full-text index outside SQLite')
             # Escape special FTS characters and add prefix matching
             fts_query = query.replace('"', '""').replace('*', '')
             if len(fts_query) >= 2:
@@ -259,17 +328,67 @@ class DatabaseService:
                 movies.append(movie.to_dict())
             return movies
         except Exception as e:
-            logger.warning(f"FTS search failed, falling back to LIKE: {e}")
+            self.db.rollback()  # Postgres refuses further queries after a failed one until rolled back
+            if self._is_sqlite():
+                logger.warning(f"FTS search failed, falling back to LIKE: {e}")
             # Fallback to LIKE search if FTS fails
             search_term = f"%{query}%"
             movies = self.db.query(Movie)\
                 .filter(Movie.title.ilike(search_term))\
-                .order_by(desc(Movie.popularity))\
+                .order_by(desc(Movie.popularity).nullslast())\
                 .offset(offset)\
                 .limit(per_page)\
                 .all()
             return [movie.to_dict() for movie in movies]
-    
+
+    def get_top_rated(self, kind: str, limit: int = 250) -> List[Dict[str, Any]]:
+        """
+        Rank titles with IMDb's Top 250 formula (a weighted rating), using TMDB votes
+
+            WR = v / (v + m) * R + m / (v + m) * C
+
+        R is the title's average rating and v its number of votes; C is the mean
+        rating of all voted titles and m the votes needed to be listed. m is the
+        95th percentile of vote counts, so only widely rated titles qualify, and a
+        title's score leans toward C until it has many more votes than m.
+
+        Args:
+            kind: 'movie' or 'series'
+            limit: Number of titles to return
+
+        Returns:
+            Title dictionaries, best first, with 'rank', 'weighted_rating' and 'vote_count' added
+        """
+        model = Movie if kind == 'movie' else TVShow
+        voted = self.db.query(model).filter(model.vote_count > 0, model.imdb_id.isnot(None))
+        voted_count = voted.count()
+        if not voted_count:
+            return []
+
+        mean_rating = voted.with_entities(func.avg(model.vote_average)).scalar()
+        min_votes = voted.with_entities(model.vote_count)\
+            .order_by(model.vote_count)\
+            .offset(int(voted_count * 0.95))\
+            .limit(1)\
+            .scalar()
+
+        weighted = (model.vote_count * model.vote_average + min_votes * mean_rating) / (model.vote_count + min_votes)
+        titles = voted.filter(model.vote_count >= min_votes)\
+            .order_by(weighted.desc())\
+            .limit(limit)\
+            .all()
+
+        result = []
+        for rank, title in enumerate(titles, start=1):
+            title_dict = title.to_dict()
+            title_dict['rank'] = rank
+            title_dict['vote_count'] = title.vote_count
+            title_dict['weighted_rating'] = round(
+                (title.vote_count * title.vote_average + min_votes * mean_rating) / (title.vote_count + min_votes), 2
+            )
+            result.append(title_dict)
+        return result
+
     # TV Show operations
     def get_tvshow_by_imdb_id(self, imdb_id):
         """Get TV show by IMDB ID"""
@@ -278,42 +397,25 @@ class DatabaseService:
     def get_tvshow_by_tmdb_id(self, tmdb_id):
         """Get TV show by TMDB ID"""
         return self.db.query(TVShow).filter(TVShow.tmdb_id == tmdb_id).first()
+
+    def get_tvshows_by_tmdb_ids(self, tmdb_ids: List[int]) -> List[Dict[str, Any]]:
+        """Get TV shows for these TMDB IDs in the same order, skipping IDs not in the database"""
+        tvshows = self.db.query(TVShow).filter(TVShow.tmdb_id.in_(tmdb_ids)).all()
+        by_id = {tvshow.tmdb_id: tvshow.to_dict() for tvshow in tvshows}
+        return [by_id[tmdb_id] for tmdb_id in tmdb_ids if tmdb_id in by_id]
     
     def create_or_update_tvshow(self, tvshow_data):
         """Create or update a TV show"""
-        tvshow = self.get_tvshow_by_imdb_id(tvshow_data.get('imdb_id'))
-        
-        if tvshow:
-            # Update existing TV show
-            for key, value in tvshow_data.items():
-                if hasattr(tvshow, key):
-                    setattr(tvshow, key, value)
-            tvshow.updated_at = datetime.utcnow()
-        else:
-            # Create new TV show
-            tvshow = TVShow(**tvshow_data)
-            self.db.add(tvshow)
-        
+        tvshow = self._upsert(TVShow, tvshow_data, {})
         self.db.commit()
         self.db.refresh(tvshow)
         return tvshow
     
     def create_or_update_tvshows_batch(self, tvshows_data):
         """Create or update multiple TV shows in batch"""
+        pending = {}
         for tvshow_data in tvshows_data:
-            tvshow = self.get_tvshow_by_imdb_id(tvshow_data.get('imdb_id'))
-            
-            if tvshow:
-                # Update existing TV show
-                for key, value in tvshow_data.items():
-                    if hasattr(tvshow, key):
-                        setattr(tvshow, key, value)
-                tvshow.updated_at = datetime.utcnow()
-            else:
-                # Create new TV show
-                tvshow = TVShow(**tvshow_data)
-                self.db.add(tvshow)
-        
+            self._upsert(TVShow, tvshow_data, pending)
         self.db.commit()
         return len(tvshows_data)
     
@@ -321,17 +423,18 @@ class DatabaseService:
         """Get latest TV shows from database"""
         offset = (page - 1) * per_page
         tvshows = self.db.query(TVShow)\
-            .order_by(TVShow.first_air_date.desc())\
+            .order_by(TVShow.first_air_date.desc().nullslast())\
             .offset(offset)\
             .limit(per_page)\
             .all()
         return [tvshow.to_dict() for tvshow in tvshows]
     
-    def get_trending_tvshows(self, per_page=16):
-        """Get trending TV shows from database"""
+    def get_trending_tvshows(self, per_page=16, offset=0):
+        """Get trending TV shows from database, skipping `offset` items (for the row's Show More button)"""
         tvshows = self.db.query(TVShow)\
             .filter(TVShow.is_trending == True, TVShow.imdb_id.isnot(None))\
-            .order_by(TVShow.popularity.desc())\
+            .order_by(TVShow.popularity.desc().nullslast())\
+            .offset(offset)\
             .limit(per_page)\
             .all()
         return [tvshow.to_dict() for tvshow in tvshows]
@@ -356,7 +459,7 @@ class DatabaseService:
                 TVShow.imdb_id.isnot(None),
                 TVShow.genres.isnot(None)
             )\
-            .order_by(desc(TVShow.popularity))\
+            .order_by(desc(TVShow.popularity).nullslast())\
             .all()
         
         # Filter by genre in Python (SQLite JSON queries can be tricky)
@@ -404,8 +507,10 @@ class DatabaseService:
         """Search TV shows in database using FTS for ultra-fast results"""
         offset = (page - 1) * per_page
         
-        # Use FTS5 for lightning-fast full-text search
+        # Use FTS5 for lightning-fast full-text search (SQLite only; Postgres uses the LIKE search below)
         try:
+            if not self._is_sqlite():
+                raise LookupError('no full-text index outside SQLite')
             # Escape special FTS characters and add prefix matching
             # Use * for prefix matching (e.g., "breaking*" matches "breaking bad")
             fts_query = query.replace('"', '""').replace('*', '')
@@ -436,11 +541,12 @@ class DatabaseService:
                 tvshows.append(tvshow.to_dict())
             return tvshows
         except Exception as e:
+            self.db.rollback()
             # Fallback to LIKE search if FTS fails
             search_term = f"%{query}%"
             tvshows = self.db.query(TVShow)\
                 .filter(TVShow.title.ilike(search_term))\
-                .order_by(TVShow.popularity.desc())\
+                .order_by(TVShow.popularity.desc().nullslast())\
                 .offset(offset)\
                 .limit(per_page)\
                 .all()
@@ -473,7 +579,7 @@ class DatabaseService:
     # My List operations
     def get_my_list(self):
         """Get all items in My List"""
-        items = self.db.query(MyList).order_by(MyList.created_at.desc()).all()
+        items = self._mine(MyList).order_by(MyList.created_at.desc()).all()
         result = []
         
         for item in items:
@@ -498,7 +604,7 @@ class DatabaseService:
     def add_to_my_list(self, media_type, media_id, tmdb_id, title):
         """Add an item to My List"""
         # Check if already in list
-        existing = self.db.query(MyList).filter(
+        existing = self._mine(MyList).filter(
             MyList.media_type == media_type,
             MyList.media_id == media_id
         ).first()
@@ -508,6 +614,7 @@ class DatabaseService:
         
         # Create new entry
         new_item = MyList(
+            user_id=self.user_id,
             media_type=media_type,
             media_id=media_id,
             tmdb_id=tmdb_id,
@@ -520,7 +627,7 @@ class DatabaseService:
     
     def remove_from_my_list(self, media_type, media_id):
         """Remove an item from My List"""
-        item = self.db.query(MyList).filter(
+        item = self._mine(MyList).filter(
             MyList.media_type == media_type,
             MyList.media_id == media_id
         ).first()
@@ -533,7 +640,7 @@ class DatabaseService:
     
     def is_in_my_list(self, media_type: str, media_id: str) -> bool:
         """Check if an item is in My List"""
-        exists = self.db.query(MyList).filter(
+        exists = self._mine(MyList).filter(
             MyList.media_type == media_type,
             MyList.media_id == media_id
         ).first()
@@ -557,7 +664,7 @@ class DatabaseService:
         """
         from database import WatchHistory
         
-        query = self.db.query(WatchHistory).filter(
+        query = self._mine(WatchHistory).filter(
             WatchHistory.media_type == media_type,
             WatchHistory.media_id == media_id
         )
@@ -594,7 +701,7 @@ class DatabaseService:
         
         try:
             # Check if already marked
-            query = self.db.query(WatchedItems).filter(
+            query = self._mine(WatchedItems).filter(
                 WatchedItems.media_type == media_type,
                 WatchedItems.media_id == media_id
             )
@@ -615,6 +722,7 @@ class DatabaseService:
             
             # Create new watched mark
             watched_item = WatchedItems(
+                user_id=self.user_id,
                 media_type=media_type,
                 media_id=media_id,
                 tmdb_id=tmdb_id,
@@ -652,7 +760,7 @@ class DatabaseService:
         from database import WatchedItems
         
         try:
-            query = self.db.query(WatchedItems).filter(
+            query = self._mine(WatchedItems).filter(
                 WatchedItems.media_type == media_type,
                 WatchedItems.media_id == media_id
             )
@@ -697,7 +805,7 @@ class DatabaseService:
             # Mark all episodes in the season
             for episode_num in range(1, episode_count + 1):
                 # Check if already marked
-                existing = self.db.query(WatchedItems).filter(
+                existing = self._mine(WatchedItems).filter(
                     WatchedItems.media_type == 'series',
                     WatchedItems.media_id == media_id,
                     WatchedItems.season_number == season_number,
@@ -706,6 +814,7 @@ class DatabaseService:
                 
                 if not existing:
                     watched_item = WatchedItems(
+                        user_id=self.user_id,
                         media_type='series',
                         media_id=media_id,
                         tmdb_id=tmdb_id,
@@ -739,7 +848,7 @@ class DatabaseService:
         from database import WatchedItems
         
         try:
-            self.db.query(WatchedItems).filter(
+            self._mine(WatchedItems).filter(
                 WatchedItems.media_type == 'series',
                 WatchedItems.media_id == media_id,
                 WatchedItems.season_number == season_number
@@ -800,7 +909,7 @@ class DatabaseService:
         from database import WatchedItems
         
         try:
-            self.db.query(WatchedItems).filter(
+            self._mine(WatchedItems).filter(
                 WatchedItems.media_type == 'series',
                 WatchedItems.media_id == media_id
             ).delete()
@@ -825,7 +934,7 @@ class DatabaseService:
         """
         from database import WatchedItems
         
-        watched_episodes = self.db.query(WatchedItems).filter(
+        watched_episodes = self._mine(WatchedItems).filter(
             WatchedItems.media_type == 'series',
             WatchedItems.media_id == media_id,
             WatchedItems.season_number == season_number
@@ -850,7 +959,7 @@ class DatabaseService:
         """
         from database import WatchedItems
         
-        watched_episodes = self.db.query(WatchedItems).filter(
+        watched_episodes = self._mine(WatchedItems).filter(
             WatchedItems.media_type == 'series',
             WatchedItems.media_id == media_id
         ).all()
@@ -885,7 +994,7 @@ class DatabaseService:
         """
         from database import WatchedItems
         
-        query = self.db.query(WatchedItems).filter(
+        query = self._mine(WatchedItems).filter(
             WatchedItems.media_type == media_type,
             WatchedItems.media_id == media_id
         )
@@ -912,7 +1021,7 @@ class DatabaseService:
         """
         from database import WatchedItems
         
-        query = self.db.query(WatchedItems)
+        query = self._mine(WatchedItems)
         
         if media_type:
             query = query.filter(WatchedItems.media_type == media_type)
@@ -974,7 +1083,7 @@ class DatabaseService:
             is_completed = progress_percent >= 90
             
             # Find existing record
-            query = self.db.query(WatchHistory).filter(
+            query = self._mine(WatchHistory).filter(
                 WatchHistory.media_type == media_type,
                 WatchHistory.media_id == media_id
             )
@@ -1001,6 +1110,7 @@ class DatabaseService:
             else:
                 # Create new record
                 watch_record = WatchHistory(
+                    user_id=self.user_id,
                     media_type=media_type,
                     media_id=media_id,
                     tmdb_id=tmdb_id,
@@ -1047,7 +1157,7 @@ class DatabaseService:
         """
         from database import WatchHistory
         
-        continue_watching = self.db.query(WatchHistory)\
+        continue_watching = self._mine(WatchHistory)\
             .filter(
                 WatchHistory.progress_percent >= 5,
                 WatchHistory.progress_percent < 90,
@@ -1146,7 +1256,7 @@ class DatabaseService:
         from database import WatchHistory
         
         try:
-            query = self.db.query(WatchHistory).filter(
+            query = self._mine(WatchHistory).filter(
                 WatchHistory.media_type == media_type,
                 WatchHistory.media_id == media_id
             )

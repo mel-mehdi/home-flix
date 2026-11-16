@@ -52,6 +52,10 @@ const homeflixApp = {
             
             // Update button state based on action performed
             if (data.success) {
+                // Keep the hero banner's cached My List in sync (hero-banner.js, home page only)
+                if (typeof heroMyListIds !== 'undefined' && heroMyListIds) {
+                    isAdded ? heroMyListIds.delete(id) : heroMyListIds.add(id);
+                }
                 if (!isAdded) {
                     // Added to list
                     button.innerHTML = `

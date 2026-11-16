@@ -1,0 +1,7 @@
+# Server-only changes, used with: docker compose -f docker-compose.yml -f deploy/docker-compose.server.yml
+# HomeFlix answers only on the server itself; visitors reach it through the Cloudflare tunnel,
+# so no port has to be opened in Oracle's firewall.
+services:
+  homeflix:
+    ports: !override
+      - "127.0.0.1:5000:5000"

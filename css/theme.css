@@ -1,0 +1,1241 @@
+/*
+ * HomeFlix theme: modern cinematic black and red.
+ * Loaded last on every page (after each page's own <style>), so it sets the look
+ * on top of index.css and the per-page styles. Sizes are in px because index.css
+ * sets html { font-size: 62.5% }, which makes 1rem = 10px.
+ */
+
+:root {
+    --hf-bg: #080808;
+    --hf-surface: #141414;
+    --hf-elevated: #202020;
+    --hf-red: #E50914;
+    --hf-red-hover: #F6121D;
+    --hf-red-glow: rgba(229, 9, 20, 0.35);
+    --hf-text: #FFFFFF;
+    --hf-text-2: #B3B3B3;
+    --hf-line: rgba(255, 255, 255, 0.10);
+
+    --hf-font-display: 'Outfit', 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    --hf-font-body: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+
+    --hf-radius-sm: 6px;
+    --hf-radius: 10px;
+    --hf-radius-lg: 16px;
+    --hf-gutter: clamp(16px, 4vw, 64px);
+    --hf-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ---------- Base ---------- */
+
+body {
+    background-color: var(--hf-bg);
+    color: var(--hf-text);
+    font-family: var(--hf-font-body);
+}
+
+::selection {
+    background: var(--hf-red);
+    color: #fff;
+}
+
+/* Thin dark scrollbars with a red thumb */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #3a3a3a transparent;
+}
+
+*::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: #3a3a3a;
+    border-radius: 8px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: var(--hf-red);
+}
+
+:focus-visible {
+    outline: 2px solid var(--hf-red);
+    outline-offset: 2px;
+}
+
+/* index.css outlines these on every focus, so a mouse click left a white box around
+   the clicked link. Keep the ring for keyboard users only, in HomeFlix red. */
+.btn:focus,
+.title-card:focus,
+.nav-link:focus,
+.genre-tab:focus {
+    outline: none;
+}
+
+.btn:focus-visible,
+.title-card:focus-visible,
+.nav-link:focus-visible,
+.genre-tab:focus-visible {
+    outline: 2px solid var(--hf-red);
+    outline-offset: 2px;
+}
+
+/* ---------- Navigation ---------- */
+
+.navbar {
+    height: 72px;
+    padding: 0 var(--hf-gutter);
+    background: linear-gradient(to bottom, rgba(8, 8, 8, 0.85) 0%, rgba(8, 8, 8, 0) 100%);
+    transition: background-color 0.3s var(--hf-ease), box-shadow 0.3s var(--hf-ease);
+}
+
+.navbar.scrolled {
+    background-color: rgba(8, 8, 8, 0.92);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 1px 0 var(--hf-line);
+}
+
+/* Wordmark: house-play glyph + HOME in white, FLIX in red */
+.netflix-logo,
+.hf-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-right: 40px;
+    color: var(--hf-text);
+    font-family: var(--hf-font-display);
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    line-height: 1;
+}
+
+.hf-logo-mark {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 10px var(--hf-red-glow));
+}
+
+.hf-logo-accent {
+    color: var(--hf-red);
+}
+
+.main-nav {
+    gap: 28px;
+}
+
+.nav-link {
+    position: relative;
+    white-space: nowrap;
+    margin-right: 0;
+    padding: 6px 0;
+    color: var(--hf-text-2);
+    font-size: 15px;
+    font-weight: 500;
+    transition: color 0.2s var(--hf-ease);
+}
+
+.nav-link:hover {
+    color: var(--hf-text);
+}
+
+.nav-link.active {
+    color: var(--hf-text);
+    font-weight: 600;
+}
+
+/* Red underline that grows in on hover and stays on the active link */
+.main-nav .nav-link::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -4px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--hf-red);
+    transform: scaleX(0);
+    transition: transform 0.25s var(--hf-ease);
+}
+
+.main-nav .nav-link:hover::after,
+.main-nav .nav-link.active::after {
+    transform: scaleX(1);
+}
+
+/* Search: an always-visible field with the icon on the right */
+.search-container {
+    flex-direction: row-reverse;
+    width: 260px;
+    height: 40px;
+    margin-right: 20px;
+    padding-left: 14px;
+    background: rgba(8, 8, 8, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    overflow: visible;
+    transition: border-color 0.2s var(--hf-ease), background-color 0.2s var(--hf-ease), width 0.3s var(--hf-ease);
+}
+
+.search-container:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.search-container.active,
+.search-container:focus-within {
+    width: 300px;
+    background: rgba(8, 8, 8, 0.85);
+    border-color: var(--hf-red);
+    box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.18);
+}
+
+.search-input,
+.search-container.active .search-input {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+    opacity: 1;
+    padding: 0;
+    color: var(--hf-text);
+    font-family: var(--hf-font-body);
+    font-size: 14px;
+}
+
+.search-input::placeholder {
+    color: var(--hf-text-2);
+}
+
+.search-toggle {
+    width: 40px;
+    height: 38px;
+    color: var(--hf-text-2);
+}
+
+.search-toggle:hover {
+    color: var(--hf-text);
+    transform: none;
+}
+
+.search-suggestions {
+    top: calc(100% + 8px);
+    background: rgba(20, 20, 20, 0.98);
+    border: 1px solid var(--hf-line);
+    border-radius: var(--hf-radius);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.7);
+    overflow: hidden;
+}
+
+.suggestion-item:hover {
+    background: var(--hf-elevated);
+}
+
+.suggestion-type.movie,
+.suggestion-type.series {
+    background: rgba(229, 9, 20, 0.15);
+    color: #ff4d55;
+}
+
+.avatar-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--hf-red), #8a050c);
+    font-family: var(--hf-font-display);
+    font-weight: 700;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08);
+}
+
+/* Account menu: the avatar opens a small panel with the username and Sign out */
+.profile-menu > summary {
+    display: block;
+    list-style: none;
+    cursor: pointer;
+}
+
+.profile-menu > summary::-webkit-details-marker {
+    display: none;
+}
+
+.profile-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 1000;
+    min-width: 180px;
+    padding: 8px;
+    background: var(--hf-surface);
+    border: 1px solid var(--hf-line);
+    border-radius: var(--hf-radius-sm, 6px);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+
+.profile-name {
+    padding: 8px 10px;
+    color: var(--hf-text-2);
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.profile-signout {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    color: #fff;
+    font: inherit;
+    font-size: 14px;
+    text-align: left;
+    background: none;
+    border: 0;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.profile-signout:hover,
+.profile-signout:focus-visible {
+    background: var(--hf-elevated);
+}
+
+.mobile-nav-menu {
+    background: rgba(8, 8, 8, 0.97);
+    border-bottom: 1px solid var(--hf-line);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.mobile-nav-menu .nav-link.active {
+    color: var(--hf-text);
+    border-left: 3px solid var(--hf-red);
+}
+
+/* ---------- Buttons ---------- */
+
+.btn {
+    gap: 10px;
+    min-height: 48px;
+    padding: 0 28px;
+    border-radius: var(--hf-radius-sm);
+    font-family: var(--hf-font-body);
+    font-size: 16px;
+    font-weight: 600;
+    transition: background-color 0.2s var(--hf-ease), border-color 0.2s var(--hf-ease), transform 0.2s var(--hf-ease), box-shadow 0.2s var(--hf-ease);
+}
+
+.btn svg {
+    width: 22px;
+    height: 22px;
+    margin-right: 0;
+}
+
+.btn-primary {
+    background-color: var(--hf-red);
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(229, 9, 20, 0.35);
+}
+
+.btn-primary:hover {
+    background-color: var(--hf-red-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(229, 9, 20, 0.5);
+}
+
+.btn-primary:hover svg {
+    transform: none;
+}
+
+.btn-secondary {
+    background-color: rgba(8, 8, 8, 0.45);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.btn-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-color: #fff;
+    transform: translateY(-2px);
+}
+
+.btn-icon {
+    width: 48px;
+    min-width: 48px;
+    padding: 0;
+    border-radius: 50%;
+    background: rgba(8, 8, 8, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    color: #fff;
+}
+
+.btn-icon:hover {
+    border-color: #fff;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+/* ---------- Hero ---------- */
+
+.hero-banner {
+    height: min(88vh, 860px);
+    min-height: 560px;
+    max-height: none;
+    align-items: flex-end;
+    padding-bottom: clamp(64px, 9vh, 120px);
+}
+
+/* Cinematic overlay: dark on the left for the text, faded into the page at the
+   bottom, with HomeFlix's red light rising from the lower left */
+.hero-banner::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    /* First layer paints on top: the bottom fade comes first so the red light
+       melts into the page instead of stopping at the hero's edge */
+    background:
+        linear-gradient(0deg, var(--hf-bg) 0%, rgba(8, 8, 8, 0.85) 8%, rgba(8, 8, 8, 0) 40%),
+        radial-gradient(ellipse 60% 65% at 0% 80%, rgba(229, 9, 20, 0.30) 0%, rgba(229, 9, 20, 0) 70%),
+        linear-gradient(90deg, rgba(8, 8, 8, 0.95) 0%, rgba(8, 8, 8, 0.75) 30%, rgba(8, 8, 8, 0.15) 65%, rgba(8, 8, 8, 0) 100%),
+        linear-gradient(180deg, rgba(8, 8, 8, 0.6) 0%, rgba(8, 8, 8, 0) 20%);
+}
+
+.hero-content {
+    z-index: 2;
+    width: min(620px, 90%);
+    margin-left: var(--hf-gutter);
+}
+
+.hero-title {
+    font-family: var(--hf-font-display);
+    font-size: clamp(36px, 5vw, 72px);
+    font-weight: 800;
+    line-height: 1.02;
+    letter-spacing: -0.01em;
+    margin-bottom: 18px;
+    text-shadow: 0 4px 30px rgba(0, 0, 0, 0.6);
+}
+
+.hero-overview {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    max-width: 560px;
+    margin-bottom: 28px;
+    color: #e6e6e6;
+    font-size: clamp(14px, 1.15vw, 17px);
+    line-height: 1.6;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
+}
+
+.hero-buttons {
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.hero-nav-arrow {
+    z-index: 3;
+    background: rgba(8, 8, 8, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.hero-nav-arrow:hover:not(.inactive) {
+    background: var(--hf-red);
+    border-color: var(--hf-red);
+}
+
+/* ---------- Genre tab bar (under the hero on the home page) ---------- */
+
+.genre-tabs {
+    position: relative;
+    z-index: 2;
+    scroll-margin-top: 80px; /* filters scroll here; keep it clear of the fixed nav bar */
+    margin: -8px var(--hf-gutter) 0;
+    border-bottom: 1px solid var(--hf-line);
+}
+
+.genre-tabs-scroll {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.genre-tabs-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.genre-tab {
+    position: relative;
+    flex-shrink: 0;
+    padding: 16px 18px;
+    background: none;
+    border: none;
+    color: var(--hf-text-2);
+    font-family: var(--hf-font-body);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s var(--hf-ease);
+}
+
+.genre-tab:hover {
+    color: var(--hf-text);
+}
+
+.genre-tab::after {
+    content: '';
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: -1px;
+    height: 3px;
+    border-radius: 3px 3px 0 0;
+    background: var(--hf-red);
+    transform: scaleX(0);
+    transition: transform 0.25s var(--hf-ease);
+}
+
+.genre-tab.active {
+    color: var(--hf-text);
+    font-weight: 600;
+}
+
+.genre-tab.active::after {
+    transform: scaleX(1);
+}
+
+/* ---------- Rows ---------- */
+
+.content-row {
+    margin: 0;
+    padding: 36px var(--hf-gutter) 8px;
+}
+
+/* Search results nest rows inside a row: don't indent the inner ones twice */
+.content-row .content-row {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.row-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+/* Short red bar before each row title: a HomeFlix signature */
+.row-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--hf-font-display);
+    font-size: clamp(20px, 1.6vw, 26px);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--hf-text);
+}
+
+.row-title::before {
+    content: '';
+    width: 4px;
+    height: 0.95em;
+    border-radius: 4px;
+    background: var(--hf-red);
+    box-shadow: 0 0 12px var(--hf-red-glow);
+}
+
+.slider-container {
+    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+    gap: 18px;
+    padding: 16px 0 24px;
+}
+
+/* ---------- Title cards: portrait posters ---------- */
+
+.title-card,
+.title-card.loaded {
+    border-radius: var(--hf-radius);
+    background-color: var(--hf-surface);
+    overflow: hidden;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    transition: transform 0.35s var(--hf-ease), box-shadow 0.35s var(--hf-ease);
+}
+
+.title-card:hover,
+.title-card.loaded:hover {
+    transform: translateY(-6px) scale(1.04);
+    z-index: 10;
+    box-shadow: 0 0 0 2px var(--hf-red), 0 18px 40px rgba(0, 0, 0, 0.65), 0 0 36px var(--hf-red-glow);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.title-card-image {
+    height: auto !important;
+    aspect-ratio: 2 / 3;
+    border-radius: var(--hf-radius);
+    background: linear-gradient(110deg, #161616 30%, #222 50%, #161616 70%);
+    background-size: 200% 100%;
+    animation: hf-shimmer 1.6s linear infinite;
+}
+
+.title-card-image img {
+    border-radius: var(--hf-radius);
+    transition: transform 0.6s var(--hf-ease);
+}
+
+.title-card:hover .title-card-image img {
+    transform: scale(1.06);
+}
+
+@keyframes hf-shimmer {
+    to { background-position: -200% 0; }
+}
+
+.placeholder-image {
+    background: radial-gradient(circle at 30% 20%, #3a0a0d, var(--hf-surface) 70%);
+    font-family: var(--hf-font-display);
+    font-size: 48px;
+    color: var(--hf-red);
+}
+
+.title-card-metadata {
+    padding: 48px 12px 12px;
+    background: linear-gradient(to top, rgba(8, 8, 8, 0.97) 0%, rgba(8, 8, 8, 0.75) 55%, rgba(8, 8, 8, 0) 100%);
+    border-radius: 0 0 var(--hf-radius) var(--hf-radius);
+    transition: opacity 0.3s var(--hf-ease), transform 0.3s var(--hf-ease);
+}
+
+.metadata-top {
+    gap: 6px;
+}
+
+.title-card-play-button,
+.title-card-add-button,
+.title-card-like-button,
+.title-card-expand-button {
+    width: 32px;
+    height: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    background-color: rgba(8, 8, 8, 0.6);
+    transition: background-color 0.2s var(--hf-ease), border-color 0.2s var(--hf-ease), transform 0.2s var(--hf-ease);
+}
+
+.title-card-play-button {
+    background-color: var(--hf-red);
+    border-color: var(--hf-red);
+}
+
+.title-card-play-button:hover {
+    background-color: var(--hf-red-hover);
+}
+
+.title-card-add-button:hover,
+.title-card-like-button:hover,
+.title-card-expand-button:hover {
+    border-color: #fff;
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.title-card-play-button svg,
+.title-card-add-button svg,
+.title-card-like-button svg,
+.title-card-expand-button svg {
+    width: 18px;
+    height: 18px;
+}
+
+.title-card-title {
+    font-family: var(--hf-font-display);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.genre-tag {
+    border-radius: 4px;
+}
+
+.continue-watching-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: var(--hf-red);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+}
+
+.remove-from-continue-watching {
+    background: rgba(8, 8, 8, 0.75);
+}
+
+/* ---------- Filter / genre indicator strip ---------- */
+
+.filter-indicator {
+    margin: 20px var(--hf-gutter) 0;
+    background: var(--hf-surface);
+    border: 1px solid var(--hf-line);
+    border-left: 3px solid var(--hf-red);
+    border-radius: var(--hf-radius-sm);
+}
+
+.load-more-button {
+    border-radius: 999px;
+    background: var(--hf-elevated);
+    border: 1px solid var(--hf-line);
+}
+
+.load-more-button:hover {
+    background: var(--hf-red);
+    border-color: var(--hf-red);
+}
+
+/* ---------- Popups (My List, More Info, notifications) ---------- */
+
+.my-list-modal {
+    background-color: rgba(8, 8, 8, 0.8);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+
+.my-list-modal-content,
+.title-info-content {
+    background: var(--hf-surface);
+    border: 1px solid var(--hf-line);
+    border-radius: var(--hf-radius-lg);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8), 0 0 60px rgba(229, 9, 20, 0.12);
+}
+
+.my-list-modal-header h2 {
+    font-family: var(--hf-font-display);
+}
+
+.title-info-modal {
+    background: rgba(8, 8, 8, 0.8);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+
+.title-info-title {
+    font-family: var(--hf-font-display);
+    font-size: clamp(28px, 3.4vw, 44px);
+    font-weight: 800;
+}
+
+.title-info-close {
+    background: rgba(8, 8, 8, 0.7);
+    border: 1px solid var(--hf-line);
+}
+
+.title-info-close:hover {
+    background: var(--hf-red);
+}
+
+.title-info-mylist {
+    width: 48px;
+    height: 48px;
+}
+
+.title-info-actions .btn {
+    font-size: 15px;
+}
+
+/* Fade into the popup's own background so there's no seam under the artwork */
+.title-info-media-fade {
+    background: linear-gradient(to top, var(--hf-surface) 0%, rgba(20, 20, 20, 0.6) 30%, rgba(20, 20, 20, 0) 60%);
+}
+
+.title-info-overview,
+.title-info-meta {
+    font-size: 15px;
+}
+
+.title-info-side {
+    font-size: 14px;
+}
+
+.title-info-score {
+    color: #ff4d55;
+}
+
+.title-info-details-link {
+    color: var(--hf-red);
+}
+
+/* ---------- Movie, series and season pages ---------- */
+
+.movie-details-page,
+.series-details-page,
+.season-page {
+    background: var(--hf-bg);
+}
+
+.movie-hero,
+.series-hero {
+    position: relative;
+    min-height: 78vh;
+    padding: 120px var(--hf-gutter) 56px;
+}
+
+.movie-hero::after,
+.series-hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(0deg, var(--hf-bg) 0%, rgba(8, 8, 8, 0.85) 8%, rgba(8, 8, 8, 0) 40%),
+        radial-gradient(ellipse 55% 65% at 0% 80%, rgba(229, 9, 20, 0.25) 0%, rgba(229, 9, 20, 0) 70%),
+        linear-gradient(90deg, rgba(8, 8, 8, 0.9) 0%, rgba(8, 8, 8, 0.4) 55%, rgba(8, 8, 8, 0) 100%);
+}
+
+.movie-hero-content,
+.series-hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: 720px;
+}
+
+.movie-title-main,
+.series-title-main,
+.season-title-main {
+    font-family: var(--hf-font-display);
+    font-size: clamp(34px, 4.6vw, 64px);
+    font-weight: 800;
+    line-height: 1.04;
+    letter-spacing: -0.01em;
+}
+
+.movie-meta,
+.series-meta {
+    flex-wrap: wrap;
+    font-size: 15px;
+    color: var(--hf-text-2);
+}
+
+.match-score {
+    color: #46d369;
+}
+
+.rating-badge {
+    border-radius: 4px;
+    border-color: rgba(255, 255, 255, 0.35);
+    color: var(--hf-text);
+    font-size: 13px;
+}
+
+.movie-tagline {
+    font-size: 16px;
+}
+
+.movie-overview,
+.series-overview,
+.season-overview {
+    font-size: 16px;
+    line-height: 1.65;
+    color: #e6e6e6;
+}
+
+.movie-action-buttons,
+.series-action-buttons {
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.btn-play,
+.btn-add-list,
+.btn-like,
+.btn-trailer,
+.watch-mark-btn {
+    min-height: 48px;
+    padding: 0 24px;
+    border-radius: var(--hf-radius-sm);
+    font-family: var(--hf-font-body);
+    font-size: 16px;
+    font-weight: 600;
+    transition: background-color 0.2s var(--hf-ease), border-color 0.2s var(--hf-ease), transform 0.2s var(--hf-ease), box-shadow 0.2s var(--hf-ease);
+}
+
+.btn-play {
+    background: var(--hf-red);
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(229, 9, 20, 0.35);
+}
+
+.btn-play:hover {
+    background: var(--hf-red-hover);
+    transform: translateY(-2px);
+}
+
+.btn-add-list,
+.btn-like,
+.btn-trailer,
+.watch-mark-btn {
+    background: rgba(8, 8, 8, 0.45);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.btn-add-list:hover,
+.btn-like:hover,
+.btn-trailer:hover,
+.watch-mark-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: #fff;
+    transform: translateY(-2px);
+}
+
+.movie-details-content {
+    max-width: 1280px;
+}
+
+.movie-main-info h2,
+.cast-section h2,
+.section-title,
+.more-like-this-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--hf-font-display);
+    font-size: clamp(20px, 1.8vw, 28px);
+    font-weight: 700;
+}
+
+.cast-section h2::before,
+.section-title::before,
+.more-like-this-title::before {
+    content: '';
+    width: 4px;
+    height: 0.95em;
+    border-radius: 4px;
+    background: var(--hf-red);
+    box-shadow: 0 0 12px var(--hf-red-glow);
+}
+
+.movie-description,
+.info-value,
+.cast-name {
+    font-size: 15px;
+}
+
+.info-label,
+.character-name,
+.cast-character {
+    font-size: 13px;
+    color: var(--hf-text-2);
+}
+
+.movie-sidebar-info {
+    background: var(--hf-surface);
+    border: 1px solid var(--hf-line);
+    border-radius: var(--hf-radius);
+}
+
+.genre-tag {
+    background: rgba(229, 9, 20, 0.14);
+    border: 1px solid rgba(229, 9, 20, 0.4);
+    color: #ff6b72;
+}
+
+.cast-photo {
+    border-radius: var(--hf-radius);
+}
+
+.season-card,
+.episode-card {
+    background: var(--hf-surface);
+    border: 1px solid var(--hf-line);
+    border-radius: var(--hf-radius);
+    overflow: hidden;
+    transition: transform 0.3s var(--hf-ease), box-shadow 0.3s var(--hf-ease), border-color 0.3s var(--hf-ease);
+}
+
+.season-card:hover,
+.episode-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--hf-red);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 30px rgba(229, 9, 20, 0.2);
+}
+
+.season-name,
+.episode-title {
+    font-family: var(--hf-font-display);
+    font-size: 17px;
+    font-weight: 600;
+}
+
+.season-meta,
+.episode-meta,
+.episode-overview {
+    font-size: 14px;
+}
+
+.back-button {
+    border-radius: 999px;
+    background: rgba(8, 8, 8, 0.6);
+    border: 1px solid var(--hf-line);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    font-size: 14px;
+}
+
+.back-button:hover {
+    border-color: var(--hf-red);
+    background: rgba(229, 9, 20, 0.15);
+}
+
+.mlt-poster {
+    border-radius: var(--hf-radius);
+}
+
+.mlt-card:hover .mlt-poster,
+.mlt-card:focus-visible .mlt-poster {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 0 0 2px var(--hf-red), 0 14px 32px rgba(0, 0, 0, 0.6), 0 0 30px var(--hf-red-glow);
+}
+
+.mlt-title {
+    font-size: 14px;
+}
+
+.mlt-year {
+    font-size: 13px;
+}
+
+/* Shown on details pages when TMDB returned nothing (templates/_details_extras.html) */
+.details-unavailable {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    margin: 0 0 28px;
+    padding: 16px 20px;
+    background: rgba(229, 9, 20, 0.08);
+    border: 1px solid rgba(229, 9, 20, 0.35);
+    border-left: 3px solid var(--hf-red);
+    border-radius: var(--hf-radius-sm);
+    color: #e6e6e6;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.details-unavailable svg {
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: var(--hf-red);
+}
+
+.details-unavailable strong {
+    display: block;
+    color: #fff;
+}
+
+.details-unavailable code {
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    font-size: 13px;
+}
+
+/* ---------- Footer-free page end spacing ---------- */
+
+.main-content {
+    padding-bottom: 48px;
+}
+
+/* ---------- Tablets and phones ---------- */
+
+@media (max-width: 1200px) {
+    .main-nav {
+        gap: 20px;
+    }
+
+    .netflix-logo,
+    .hf-logo {
+        margin-right: 28px;
+    }
+
+    .search-container {
+        width: 200px;
+    }
+
+    .search-container.active,
+    .search-container:focus-within {
+        width: 240px;
+    }
+}
+
+@media (max-width: 950px) {
+    .search-container,
+    .search-container.active,
+    .search-container:focus-within {
+        width: 40px;
+        padding-left: 0;
+        border-color: transparent;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .search-container.active,
+    .search-container:focus-within {
+        position: absolute;
+        right: var(--hf-gutter);
+        width: calc(100vw - 2 * var(--hf-gutter));
+        padding-left: 14px;
+        background: rgba(8, 8, 8, 0.95);
+        border-color: var(--hf-red);
+        z-index: 5;
+    }
+
+    .netflix-logo,
+    .hf-logo {
+        font-size: 20px;
+        margin-right: 0;
+    }
+
+    .hf-logo-mark {
+        width: 26px;
+        height: 26px;
+    }
+
+    .hero-banner {
+        height: 78vh;
+        min-height: 480px;
+    }
+
+    .hero-content {
+        width: auto;
+        margin: 0 var(--hf-gutter);
+    }
+
+    .slider-container {
+        grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+        gap: 12px;
+    }
+}
+
+@media (max-width: 600px) {
+    .navbar {
+        height: 60px;
+    }
+
+    .hero-banner {
+        height: 72vh;
+        min-height: 440px;
+        padding-bottom: 48px;
+    }
+
+    .hero-banner::after {
+        background:
+            radial-gradient(ellipse 90% 50% at 0% 100%, rgba(229, 9, 20, 0.28) 0%, rgba(229, 9, 20, 0) 70%),
+            linear-gradient(0deg, var(--hf-bg) 0%, rgba(8, 8, 8, 0.85) 35%, rgba(8, 8, 8, 0.2) 70%, rgba(8, 8, 8, 0.5) 100%);
+    }
+
+    .hero-overview {
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        margin-bottom: 20px;
+    }
+
+    .btn {
+        min-height: 44px;
+        padding: 0 18px;
+        font-size: 15px;
+    }
+
+    .btn-icon {
+        width: 44px;
+        min-width: 44px;
+    }
+
+    /* Watch now + More info share the row with the + button; Rate is dropped to make room */
+    .hero-buttons .btn-primary,
+    .hero-buttons .btn-secondary {
+        flex: 1;
+        min-width: 0;
+        padding: 0 12px;
+        white-space: nowrap;
+    }
+
+    #heroLikeBtn {
+        display: none;
+    }
+
+    /* index.css shows card details under the poster on phones: keep that block compact */
+    .title-card-metadata {
+        padding: 8px;
+        background: var(--hf-surface);
+    }
+
+    /* The "% watched" tag already marks these; the badge would collide with the remove button */
+    .continue-watching-badge {
+        display: none;
+    }
+
+    /* Three-across cards are too narrow for four buttons; Rate is the least used */
+    .title-card-like-button {
+        display: none;
+    }
+
+    .remove-from-continue-watching {
+        top: 6px;
+        right: 6px;
+        width: 26px;
+        height: 26px;
+    }
+
+    .genre-tab {
+        padding: 14px 12px;
+        font-size: 14px;
+    }
+
+    .content-row {
+        padding-top: 28px;
+    }
+
+    .slider-container {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+
+    .title-card-title {
+        font-size: 12px;
+    }
+
+    /* Phones have no hover: keep the card buttons reachable but small */
+    .title-card-play-button,
+    .title-card-add-button,
+    .title-card-like-button,
+    .title-card-expand-button {
+        width: 26px;
+        height: 26px;
+    }
+
+    .movie-hero,
+    .series-hero {
+        min-height: 70vh;
+        padding: 100px 16px 32px;
+    }
+
+    .btn-play,
+    .btn-add-list,
+    .btn-like,
+    .btn-trailer,
+    .watch-mark-btn {
+        min-height: 44px;
+        padding: 0 16px;
+        font-size: 15px;
+    }
+}

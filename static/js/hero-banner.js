@@ -8,6 +8,26 @@ let autoRotationInterval = null; // Store the interval ID
 const preloadedImages = new Map();
 let allImagesPreloaded = false;
 
+// "Watch now" goes straight to the player; series start at S1E1 like the series page
+function heroWatchUrl(type, id) {
+    return type === 'movie'
+        ? `/watch/movie/${encodeURIComponent(id)}`
+        : `/watch/series/${encodeURIComponent(id)}/1/1`;
+}
+
+// My List IDs, fetched once and kept in sync by homeflixApp.toggleMyList,
+// so the hero doesn't call /api/my-list on every rotation
+let heroMyListIds = null;
+
+async function getHeroMyListIds() {
+    if (!heroMyListIds) {
+        const response = await fetch('/api/my-list');
+        const data = await response.json();
+        heroMyListIds = new Set(data.success && data.items ? data.items.map(item => item.id || item.imdb_id) : []);
+    }
+    return heroMyListIds;
+}
+
 // Preload backdrop images for faster transitions
 function preloadBackdropImages() {
     if (!backdropUrls || backdropUrls.length === 0) return;
@@ -245,11 +265,7 @@ async function reinitializeHeroButtons() {
         const newPlayBtn = heroPlayBtn.cloneNode(true);
         heroPlayBtn.parentNode.replaceChild(newPlayBtn, heroPlayBtn);
         newPlayBtn.addEventListener('click', function() {
-            if (typeof homeflixApp !== 'undefined') {
-                homeflixApp.playTitle(type, id);
-            } else {
-                window.location.href = `/watch/${type}/${id}`;
-            }
+            window.location.href = heroWatchUrl(type, id);
         });
     }
     
@@ -270,15 +286,11 @@ async function reinitializeHeroButtons() {
         
         // Check if this item is in My List and update button state
         try {
-            const response = await fetch('/api/my-list');
-            const data = await response.json();
-            if (data.success && data.items) {
-                const isInList = data.items.some(item => (item.id || item.imdb_id) === id);
-                if (isInList) {
-                    newAddBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" fill="currentColor"/></svg>';
-                    newAddBtn.dataset.added = 'true';
-                    newAddBtn.title = 'Remove from My List';
-                }
+            const myListIds = await getHeroMyListIds();
+            if (myListIds.has(id)) {
+                newAddBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" fill="currentColor"/></svg>';
+                newAddBtn.dataset.added = 'true';
+                newAddBtn.title = 'Remove from My List';
             }
         } catch (error) {
             console.error('Failed to check My List status:', error);
@@ -311,21 +323,12 @@ function initializeHeroBanner() {
     const heroLikeBtn = document.getElementById('heroLikeBtn');
     const heroCard = document.querySelector('[data-hero="true"]');
     
-    // More Info button - Toggle expanded view
+    // More Info button - open the details popup (title-info.js) for the title currently shown
     if (moreInfoBtn) {
         moreInfoBtn.addEventListener('click', function() {
-            const isExpanded = heroBanner.classList.contains('expanded');
-            
-            if (isExpanded) {
-                heroBanner.classList.remove('expanded');
-                const moreInfoText = moreInfoBtn.querySelector('#moreInfoText');
-                if (moreInfoText) moreInfoText.textContent = 'More Info';
-                // Scroll to top smoothly
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            } else {
-                heroBanner.classList.add('expanded');
-                const moreInfoText = moreInfoBtn.querySelector('#moreInfoText');
-                if (moreInfoText) moreInfoText.textContent = 'Less Info';
+            const currentHero = document.querySelector('[data-hero="true"]');
+            if (currentHero) {
+                openTitleInfo(currentHero.dataset.type, currentHero.dataset.id);
             }
         });
     }
@@ -333,13 +336,7 @@ function initializeHeroBanner() {
     // Play button
     if (heroPlayBtn && heroCard) {
         heroPlayBtn.addEventListener('click', function() {
-            const type = heroCard.dataset.type;
-            const id = heroCard.dataset.id;
-            if (typeof homeflixApp !== 'undefined') {
-                homeflixApp.playTitle(type, id);
-            } else {
-                window.location.href = `/watch/${type}/${id}`;
-            }
+            window.location.href = heroWatchUrl(heroCard.dataset.type, heroCard.dataset.id);
         });
     }
     
