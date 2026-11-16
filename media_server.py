@@ -151,7 +151,7 @@ def signup():
     if session.get('user_id'):
         return redirect(next_url)
     if not server_config.PASSWORD and _via_tunnel():
-        return Response('New accounts can only be made from the PC running HomeFlix until '
+        return Response('New accounts can only be made from the PC running HOME FLIX until '
                         'HOMEFLIX_PASSWORD is set in .env.', status=403, mimetype='text/plain')
 
     username = request.form.get('username', '').strip()
