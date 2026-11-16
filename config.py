@@ -38,7 +38,7 @@ class APIConfig:
 
 
 def _database_url() -> str:
-    url = os.getenv('DATABASE_URL', 'sqlite:///homeflix.db')
+    url = os.getenv('DATABASE_URL') or 'sqlite:///homeflix.db'
     # Neon and most hosts give postgres:// or postgresql:// links; SQLAlchemy needs the driver named
     for prefix in ('postgres://', 'postgresql://'):
         if url.startswith(prefix):
@@ -95,6 +95,16 @@ api_config = APIConfig()
 db_config = DatabaseConfig()
 server_config = ServerConfig()
 pagination_config = PaginationConfig()
+
+# Vercel (it sets VERCEL=1) has no writable disk and runs several copies of the app at once:
+# fail with a clear message instead of a database or sign-in error on every page
+if os.getenv('VERCEL'):
+    missing = [name for name, ok in (
+        ('DATABASE_URL (a Postgres address, e.g. Neon)', not db_config.URL.startswith('sqlite')),
+        ('FLASK_SECRET_KEY', bool(server_config.SECRET_KEY)),
+    ) if not ok]
+    if missing:
+        raise RuntimeError('Set these in the Vercel project settings: ' + ', '.join(missing))
 
 
 def get_embed_sources(media_type: str, identifier: str, season: Optional[int] = None, episode: Optional[int] = None) -> list[str]:

@@ -53,6 +53,9 @@ _login_lock = threading.Lock()
 
 
 def _client_ip() -> str:
+    # Vercel sets X-Real-IP itself; there a visitor could send a fake Cf-Connecting-IP
+    if os.getenv('VERCEL'):
+        return request.headers.get('X-Real-IP') or request.remote_addr or 'unknown'
     # Behind a tunnel every request comes from the tunnel program; its header holds the visitor.
     # ngrok appends the visitor to X-Forwarded-For, so the last entry is the one a visitor can't fake.
     forwarded = request.headers.get('X-Forwarded-For', '').split(',')[-1].strip()
@@ -78,7 +81,7 @@ def _user_db() -> DatabaseService:
 
 @app.before_request
 def require_login():
-    if request.path.startswith(_PUBLIC_PATHS):
+    if request.path.startswith(_PUBLIC_PATHS) or request.path == _CRON_SYNC_PATH:
         return None
     user_id = session.get('user_id')
     if user_id:
@@ -251,6 +254,23 @@ def _sync_loop():
 
 if os.getenv('SYNC_IN_APP', '').lower() in ('1', 'true', 'yes'):
     threading.Thread(target=_sync_loop, daemon=True, name='catalogue-sync').start()
+
+
+# Vercel can't keep a background thread: its cron job (vercel.json) calls this once a day
+_CRON_SYNC_PATH = '/api/cron/sync'
+
+
+@app.route(_CRON_SYNC_PATH)
+def cron_sync():
+    """Run one small catalogue sync. Vercel sends CRON_SECRET; anyone else is refused."""
+    secret = os.getenv('CRON_SECRET', '')
+    sent = request.headers.get('Authorization', '')
+    if not secret or not hmac.compare_digest(sent.encode(), f'Bearer {secret}'.encode()):
+        return jsonify({'error': 'not allowed'}), 401
+    import sync_data
+    pages = int(os.getenv('SYNC_PAGES', '3'))
+    sync_data.sync_all_data(movie_pages=pages, tv_pages=pages, trending_pages=1)
+    return jsonify({'synced_pages': pages})
 
 # Register monitoring routes
 try:

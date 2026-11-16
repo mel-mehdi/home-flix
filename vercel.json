@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    { "path": "/api/cron/sync", "schedule": "0 4 * * *" }
+  ],
+  "functions": {
+    "app.py": {
+      "excludeFiles": "{.venv/**,deploy/**,homeflix.db*,homeflix-bundle.tgz,tunnel.log,tunnel-url.txt,*.ps1,*.bat,responsive-guide.html,**/__pycache__/**}"
+    }
+  }
+}
