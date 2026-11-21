@@ -120,6 +120,135 @@ textarea {
     width: 100%;
 }
 
+/* Netflix-style playback controls */
+.netflix-controls {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 110;
+    padding: 18px 60px 28px;
+    background: linear-gradient(0deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.55) 55%, transparent 100%);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.progress-track {
+    position: relative;
+    height: 18px;
+    display: flex;
+    align-items: center;
+}
+
+.progress-slider {
+    position: absolute;
+    width: 100%;
+    height: 18px;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer !important;
+    z-index: 2;
+}
+
+.progress-track::before,
+.progress-fill {
+    content: "";
+    position: absolute;
+    left: 0;
+    height: 4px;
+    border-radius: 4px;
+    pointer-events: none;
+}
+
+.progress-track::before {
+    right: 0;
+    background: rgba(255, 255, 255, 0.35);
+}
+
+.progress-fill {
+    width: 0%;
+    background: #e50914;
+}
+
+.progress-track:hover::before,
+.progress-track:hover .progress-fill {
+    height: 6px;
+}
+
+.bottom-control-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 44px;
+}
+
+.bottom-controls-left,
+.bottom-controls-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.netflix-control-button,
+.center-play-button {
+    border: 0;
+    background: transparent;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.netflix-control-button {
+    width: 44px;
+    height: 44px;
+}
+
+.netflix-control-button svg,
+.center-play-button svg {
+    width: 28px;
+    height: 28px;
+}
+
+.netflix-control-button:hover,
+.center-play-button:hover {
+    transform: scale(1.12);
+}
+
+.playback-time {
+    margin-left: 4px;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+.center-play-button {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: 105;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(20, 20, 20, 0.72);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    backdrop-filter: blur(8px);
+}
+
+.center-play-button svg {
+    width: 38px;
+    height: 38px;
+}
+
+.center-play-button.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
 /* Back Button */
 .back-button {
     display: inline-flex;
@@ -875,6 +1004,11 @@ button, a, .clickable {
     .player-controls {
         padding: 15px 40px;
     }
+
+    .netflix-controls {
+        padding-left: 40px;
+        padding-right: 40px;
+    }
     
     .episode-title {
         font-size: 24px;
@@ -900,6 +1034,44 @@ button, a, .clickable {
             rgba(0, 0, 0, 0.7) 40%,
             transparent 100%
         );
+    }
+
+    .netflix-controls {
+        padding: 10px 16px 14px;
+    }
+
+    .bottom-control-row {
+        height: 40px;
+    }
+
+    .bottom-controls-left,
+    .bottom-controls-right {
+        gap: 0;
+    }
+
+    .netflix-control-button {
+        width: 40px;
+        height: 40px;
+        padding: 6px;
+    }
+
+    .netflix-control-button svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    #rewindButton,
+    #forwardButton {
+        display: none;
+    }
+
+    .playback-time {
+        font-size: 11px;
+    }
+
+    .center-play-button {
+        width: 60px;
+        height: 60px;
     }
     
     .top-bar {

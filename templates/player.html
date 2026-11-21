@@ -77,6 +77,56 @@
                     </button>
                 </div>
             </div>
+
+            <button class="center-play-button" id="centerPlayButton" type="button" aria-label="Pause">
+                <svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 5h4v14H6zm8 0h4v14h-4z" fill="currentColor"/>
+                </svg>
+            </button>
+
+            <div class="netflix-controls" id="bottomControls">
+                <div class="progress-track">
+                    <input class="progress-slider" id="progressSlider" type="range" min="0" max="7200" value="0" aria-label="Playback position">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="bottom-control-row">
+                    <div class="bottom-controls-left">
+                        <button class="netflix-control-button" id="playPauseButton" type="button" aria-label="Pause">
+                            <svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M6 5h4v14H6zm8 0h4v14h-4z" fill="currentColor"/>
+                            </svg>
+                        </button>
+                        <button class="netflix-control-button" id="rewindButton" type="button" aria-label="Rewind 10 seconds">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M11 4a8 8 0 1 1-7.7 10H1l3.5 4L8 14H5.2A6 6 0 1 0 11 6V4zm1.2 5.1v2.2H9.5v1.2h2.7v3.2h1.5v-4.4h-1.5v-2.2z" fill="currentColor"/>
+                            </svg>
+                        </button>
+                        <button class="netflix-control-button" id="forwardButton" type="button" aria-label="Forward 10 seconds">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M13 4a8 8 0 1 0 7.7 10H23l-3.5 4L16 14h2.8A6 6 0 1 1 13 6V4zm-1.2 5.1v2.2h2.7v1.2h-2.7v3.2H10.3v-4.4h1.5v-2.2z" fill="currentColor"/>
+                            </svg>
+                        </button>
+                        <button class="netflix-control-button" id="muteButton" type="button" aria-label="Mute">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3c0-1.77-1-3.29-2.5-4.03v8.05A4.47 4.47 0 0 0 16.5 12zm-2.5-8.5v2.06a7 7 0 0 1 0 12.88v2.06A9 9 0 0 0 14 3.5z" fill="currentColor"/>
+                            </svg>
+                        </button>
+                        <span class="playback-time" id="playbackTime">0:00</span>
+                    </div>
+                    <div class="bottom-controls-right">
+                        <button class="netflix-control-button" id="sourceControlButton" type="button" aria-label="Change source">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 17.93V18h-2v1.93A8 8 0 0 1 4.07 13H6v-2H4.07A8 8 0 0 1 11 4.07V6h2V4.07A8 8 0 0 1 19.93 11H18v2h1.93A8 8 0 0 1 13 19.93zM12 7l-4 5h3v5h2v-5h3l-4-5z" fill="currentColor"/>
+                            </svg>
+                        </button>
+                        <button class="netflix-control-button" id="fullscreenButton" type="button" aria-label="Enter fullscreen">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M5 5h5V3H3v7h2V5zm9-2v2h5v5h2V3h-7zm5 16h-5v2h7v-7h-2v5zM5 14H3v7h7v-2H5v-5z" fill="currentColor"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
             
             <!-- Source Selector Menu -->
             <div class="source-menu" id="sourceMenu" style="display: none;">
@@ -148,6 +198,8 @@
         let playbackStartTime = Date.now();
         let currentProgress = 0;
         let videoDuration = 0;
+        let isPlaying = true;
+        let isMuted = false;
         
         const videoType = "{{ type }}";
         const videoTitle = "{{ title }}";
@@ -175,12 +227,16 @@
         
         function showControls() {
             const controls = document.getElementById('topControls');
+            const bottomControls = document.getElementById('bottomControls');
             controls.style.opacity = '1';
+            bottomControls.style.opacity = '1';
+            bottomControls.style.transform = 'translateY(0)';
             controlsVisible = true;
             
             clearTimeout(controlsTimeout);
             controlsTimeout = setTimeout(() => {
                 controls.style.opacity = '0';
+                bottomControls.style.opacity = '0';
                 controlsVisible = false;
             }, 3000);
         }
@@ -188,7 +244,9 @@
         // Hide controls when not moving mouse
         document.addEventListener('mouseleave', function() {
             const controls = document.getElementById('topControls');
+            const bottomControls = document.getElementById('bottomControls');
             controls.style.opacity = '0';
+            bottomControls.style.opacity = '0';
             controlsVisible = false;
         });
         
@@ -199,6 +257,7 @@
         function startProgressTracking() {
             setInterval(() => {
                 currentProgress = (Date.now() - playbackStartTime) / 1000; // seconds
+                updatePlaybackProgress();
                 
                 // Save progress every 10 seconds
                 if (Math.floor(currentProgress) % 10 === 0) {
@@ -213,6 +272,68 @@
                     saveProgress();
                 }
             }, 1000);
+        }
+
+        function formatTime(seconds) {
+            seconds = Math.max(0, Math.floor(seconds));
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return hours > 0
+                ? `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+                : `${minutes}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function updatePlaybackProgress() {
+            const slider = document.getElementById('progressSlider');
+            const fill = document.getElementById('progressFill');
+            const time = document.getElementById('playbackTime');
+            if (!slider || !fill || !time) return;
+
+            const duration = videoDuration || (videoType === 'movie' ? 7200 : 2700);
+            slider.max = duration;
+            if (document.activeElement !== slider) slider.value = Math.min(currentProgress, duration);
+            const percent = Math.min(100, (currentProgress / duration) * 100);
+            fill.style.width = `${percent}%`;
+            time.textContent = `${formatTime(currentProgress)} / ${formatTime(duration)}`;
+        }
+
+        function sendPlayerCommand(command, value) {
+            const iframe = document.getElementById('videoIframe');
+            if (!iframe || !iframe.contentWindow) return;
+            const payloads = [
+                { type: command, value },
+                { event: command, value },
+                { command, value },
+                command === 'seek' ? { seek: value } : { [command]: true }
+            ];
+            payloads.forEach(payload => iframe.contentWindow.postMessage(payload, '*'));
+        }
+
+        function setPlayState(playing) {
+            isPlaying = playing;
+            const labels = document.querySelectorAll('#playPauseButton, #centerPlayButton');
+            const playSvg = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>';
+            const pauseSvg = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z" fill="currentColor"/></svg>';
+            labels.forEach(button => {
+                if (!button) return;
+                button.innerHTML = playing ? pauseSvg : playSvg;
+                button.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+            });
+            const center = document.getElementById('centerPlayButton');
+            if (center) center.classList.toggle('visible', !playing);
+        }
+
+        function togglePlayback() {
+            setPlayState(!isPlaying);
+            sendPlayerCommand(isPlaying ? 'play' : 'pause');
+        }
+
+        function seekTo(seconds) {
+            currentProgress = Math.max(0, Math.min(seconds, videoDuration || 7200));
+            playbackStartTime = Date.now() - (currentProgress * 1000);
+            sendPlayerCommand('seek', currentProgress);
+            updatePlaybackProgress();
         }
         
 
@@ -266,6 +387,43 @@
                 }
             })
             .catch(err => console.log('Failed to save progress:', err));
+        }
+
+        function setupNetflixControls() {
+            const playPause = document.getElementById('playPauseButton');
+            const centerPlay = document.getElementById('centerPlayButton');
+            const rewind = document.getElementById('rewindButton');
+            const forward = document.getElementById('forwardButton');
+            const mute = document.getElementById('muteButton');
+            const fullscreen = document.getElementById('fullscreenButton');
+            const sourceButton = document.getElementById('sourceControlButton');
+            const slider = document.getElementById('progressSlider');
+
+            playPause?.addEventListener('click', togglePlayback);
+            centerPlay?.addEventListener('click', togglePlayback);
+            rewind?.addEventListener('click', () => seekTo(currentProgress - 10));
+            forward?.addEventListener('click', () => seekTo(currentProgress + 10));
+            mute?.addEventListener('click', () => {
+                isMuted = !isMuted;
+                mute.setAttribute('aria-label', isMuted ? 'Unmute' : 'Mute');
+                mute.style.opacity = isMuted ? '0.55' : '1';
+                sendPlayerCommand(isMuted ? 'mute' : 'unmute');
+            });
+            fullscreen?.addEventListener('click', async () => {
+                try {
+                    if (document.fullscreenElement) {
+                        await document.exitFullscreen();
+                    } else {
+                        await document.querySelector('.player-container').requestFullscreen();
+                    }
+                } catch (err) {
+                    console.warn('Fullscreen unavailable:', err);
+                }
+            });
+            sourceButton?.addEventListener('click', showSourceMenu);
+            slider?.addEventListener('input', () => seekTo(Number(slider.value)));
+
+            updatePlaybackProgress();
         }
         
         // Load saved progress on page load
@@ -324,6 +482,8 @@
                 url.searchParams.set('t', seconds);
                 iframe.src = url.toString();
             }
+            seekTo(seconds);
+            setPlayState(true);
             dismissResumePrompt();
             showToast('Resuming playback...');
         };
@@ -389,8 +549,22 @@
                     document.documentElement.requestFullscreen();
                 }
             }
+            if (e.code === 'Space') {
+                e.preventDefault();
+                togglePlayback();
+            }
+            if (e.key === 'ArrowLeft') {
+                seekTo(currentProgress - 10);
+            }
+            if (e.key === 'ArrowRight') {
+                seekTo(currentProgress + 10);
+            }
+            if (e.key === 'm' || e.key === 'M') {
+                document.getElementById('muteButton')?.click();
+            }
             if (e.key === 'Escape') {
                 showControls();
+                hideSourceMenu();
             }
 
         });
@@ -433,6 +607,7 @@
         window.addEventListener('load', () => {
             // Estimate video duration (for movies ~7200s, series ~2700s)
             videoDuration = videoType === 'movie' ? 7200 : 2700;
+            setupNetflixControls();
             
             // Check if already watched
             checkWatchedStatus();
