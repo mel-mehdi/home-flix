@@ -78,12 +78,6 @@
                 </div>
             </div>
 
-            <button class="center-play-button" id="centerPlayButton" type="button" aria-label="Pause">
-                <svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M6 5h4v14H6zm8 0h4v14h-4z" fill="currentColor"/>
-                </svg>
-            </button>
-
             <div class="netflix-controls" id="bottomControls">
                 <div class="progress-track">
                     <input class="progress-slider" id="progressSlider" type="range" min="0" max="7200" value="0" aria-label="Playback position">
@@ -220,6 +214,35 @@
                 {% endfor %}
             {% endif %}
         ];
+
+        function prepareSourceUrl(sourceUrl) {
+            try {
+                const url = new URL(sourceUrl);
+                const host = url.hostname.toLower();
+
+                url.searchParams.set('controls', '0');
+                url.searchParams.set('autoplay', '1');
+
+                if (host.includes('vidlink')) {
+                    url.searchParams.set('controls', 'false');
+                    url.searchParams.set('autoplay', 'true');
+                } else if (host.includes('vidrock')) {
+                    url.searchParams.set('controls', 'false');
+                    url.searchParams.set('autoplay', 'true');
+                } else if (host.includes('vidfast')) {
+                    url.searchParams.set('controls', 'false');
+                    url.searchParams.set('autoPlay', 'true');
+                } else if (host.includes('vixsrc')) {
+                    url.searchParams.set('controls', '0');
+                    url.searchParams.set('autoplay', '1');
+                }
+
+                return url.toString();
+            } catch (error) {
+                console.warn('Could not prepare source URL:', error);
+                return sourceUrl;
+            }
+        }
         
         // Show/hide controls on mouse movement
         document.addEventListener('mousemove', showControls);
@@ -312,7 +335,7 @@
 
         function setPlayState(playing) {
             isPlaying = playing;
-            const labels = document.querySelectorAll('#playPauseButton, #centerPlayButton');
+            const labels = document.querySelectorAll('#playPauseButton');
             const playSvg = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>';
             const pauseSvg = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z" fill="currentColor"/></svg>';
             labels.forEach(button => {
@@ -320,8 +343,6 @@
                 button.innerHTML = playing ? pauseSvg : playSvg;
                 button.setAttribute('aria-label', playing ? 'Pause' : 'Play');
             });
-            const center = document.getElementById('centerPlayButton');
-            if (center) center.classList.toggle('visible', !playing);
         }
 
         function togglePlayback() {
@@ -391,7 +412,6 @@
 
         function setupNetflixControls() {
             const playPause = document.getElementById('playPauseButton');
-            const centerPlay = document.getElementById('centerPlayButton');
             const rewind = document.getElementById('rewindButton');
             const forward = document.getElementById('forwardButton');
             const mute = document.getElementById('muteButton');
@@ -400,7 +420,6 @@
             const slider = document.getElementById('progressSlider');
 
             playPause?.addEventListener('click', togglePlayback);
-            centerPlay?.addEventListener('click', togglePlayback);
             rewind?.addEventListener('click', () => seekTo(currentProgress - 10));
             forward?.addEventListener('click', () => seekTo(currentProgress + 10));
             mute?.addEventListener('click', () => {
@@ -621,7 +640,7 @@
             selectWorkingSource(embedSources).then(chosen => {
                 if (chosen) {
                     const iframe = document.getElementById('videoIframe');
-                    iframe.src = chosen;
+                    iframe.src = prepareSourceUrl(chosen);
                 } else {
                     // No working source found — show error message
                     showError();
@@ -724,7 +743,7 @@
             
             // Switch iframe source
             const iframe = document.getElementById('videoIframe');
-            iframe.src = sourceUrl;
+            iframe.src = prepareSourceUrl(sourceUrl);
             
             // Show notification
             showToast('Switching video source...');

@@ -188,8 +188,7 @@ textarea {
     gap: 8px;
 }
 
-.netflix-control-button,
-.center-play-button {
+.netflix-control-button {
     border: 0;
     background: transparent;
     color: #fff;
@@ -205,14 +204,12 @@ textarea {
     height: 44px;
 }
 
-.netflix-control-button svg,
-.center-play-button svg {
+.netflix-control-button svg {
     width: 28px;
     height: 28px;
 }
 
-.netflix-control-button:hover,
-.center-play-button:hover {
+.netflix-control-button:hover {
     transform: scale(1.12);
 }
 
@@ -221,32 +218,6 @@ textarea {
     color: rgba(255, 255, 255, 0.82);
     font-size: 13px;
     font-variant-numeric: tabular-nums;
-}
-
-.center-play-button {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    z-index: 105;
-    width: 72px;
-    height: 72px;
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(20, 20, 20, 0.72);
-    border: 2px solid rgba(255, 255, 255, 0.5);
-    opacity: 0;
-    pointer-events: none;
-    backdrop-filter: blur(8px);
-}
-
-.center-play-button svg {
-    width: 38px;
-    height: 38px;
-}
-
-.center-play-button.visible {
-    opacity: 1;
-    pointer-events: auto;
 }
 
 /* Back Button */
@@ -1069,10 +1040,6 @@ button, a, .clickable {
         font-size: 11px;
     }
 
-    .center-play-button {
-        width: 60px;
-        height: 60px;
-    }
     
     .top-bar {
         flex-wrap: wrap;
