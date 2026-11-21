@@ -43,7 +43,7 @@ app.config.update(
 )
 
 # The sign-in and sign-up pages need their stylesheets before anyone is signed in
-_PUBLIC_PATHS = ('/login', '/signup', '/css/', '/favicon.ico')
+_PUBLIC_PATHS = ('/login', '/signup', '/css/', '/static/', '/favicon.ico')
 _USERNAME_PATTERN = re.compile(r'^[A-Za-z0-9_.-]{3,30}$')
 _MIN_PASSWORD_LENGTH = 8
 _LOGIN_MAX_FAILURES = 10
