@@ -188,6 +188,13 @@
         let playbackStartTime = Date.now();
         let controlsTimeout;
 
+        // ?t=<seconds> comes from a Continue Watching card: resume there without asking
+        const resumeFromUrl = Math.max(0, parseInt(new URLSearchParams(location.search).get('t'), 10) || 0);
+        let progressReady = false;  // false until the starting position is known
+        let resumeFloor = 0;        // resume point, see saveProgress
+        let resumeFloorUntil = 0;
+        let resumePromptTimer;
+
         // Theme each source's own player like Netflix, using only the parameters
         // the provider supports. Unknown hosts are left untouched, because some
         // (2embed, multiembed) put the episode in a hand-built query string.
@@ -339,6 +346,11 @@
 
         // ---- Progress -----------------------------------------------------------
         function saveProgress() {
+            // Never save before we know where playback starts: a fresh page at 0:05
+            // would overwrite the saved position and drop the title from Continue Watching
+            if (!progressReady) return;
+            // Right after resuming, a source may report 0:00 before it reaches the resume point
+            if (Date.now() < resumeFloorUntil && currentProgress < resumeFloor - 30) return;
             lastSavedAt = Date.now();
             const progressData = {
                 type: videoType === 'episode' ? 'series' : videoType,
@@ -377,7 +389,19 @@
             if (badge) badge.hidden = false;
         }
 
+        // Playback (and saving) starts from here: the resume point, or 0
+        function startTrackingFrom(seconds) {
+            currentProgress = seconds;
+            playbackStartTime = Date.now() - seconds * 1000;
+            resumeFloor = seconds;
+            resumeFloorUntil = seconds > 0 ? Date.now() + 60000 : 0;
+            progressReady = true;
+        }
+
         function loadSavedProgress() {
+            // A Continue Watching card already told us where to start
+            if (resumeFromUrl > 0) return;
+
             // Progress is saved under the IMDB id (see saveProgress), so look it up the same way
             let url = `/api/watch_progress/${videoType === 'episode' ? 'series' : videoType}/${imdbId}`;
             if (videoType === 'episode' && season !== null && episode !== null) {
@@ -387,15 +411,19 @@
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success && data.progress && data.progress.progress_seconds > 0) {
-                        const saved = data.progress;
-                        // Only resume if not completed and progress is significant (>5% but <95%)
-                        if (!saved.is_completed && saved.progress_percent > 5 && saved.progress_percent < 95) {
-                            showResumePrompt(saved.progress_seconds, saved.progress_percent);
-                        }
+                    const saved = data.success && data.progress;
+                    // Only offer to resume if not completed and progress is significant (>5% but <95%)
+                    if (saved && saved.progress_seconds > 0 && !saved.is_completed
+                        && saved.progress_percent > 5 && saved.progress_percent < 95) {
+                        showResumePrompt(saved.progress_seconds, saved.progress_percent);
+                    } else {
+                        startTrackingFrom(0);
                     }
                 })
-                .catch(err => console.log('Failed to load progress:', err));
+                .catch(err => {
+                    console.log('Failed to load progress:', err);
+                    startTrackingFrom(0);
+                });
         }
 
         function formatTime(seconds) {
@@ -416,28 +444,59 @@
                     <p>Resume from ${formatTime(progressSeconds)}? (${progressPercent.toFixed(0)}% watched)</p>
                     <div class="resume-buttons">
                         <button onclick="resumePlayback(${Math.floor(progressSeconds)})" class="btn-resume">Resume</button>
-                        <button onclick="dismissResumePrompt()" class="btn-start-over">Start Over</button>
+                        <button onclick="startOver()" class="btn-start-over">Start Over</button>
                     </div>
                 </div>
             `;
             document.body.appendChild(prompt);
             setTimeout(() => prompt.classList.add('show'), 100);
+            // No answer after 20 seconds: the viewer is watching from the start
+            resumePromptTimer = setTimeout(startOver, 20000);
+        }
+
+        // Sources that can open at a given second (startAt): see prepareSourceUrl
+        function supportsStartAt(index) {
+            const src = embedSources[index];
+            return Boolean(src) && prepareSourceUrl(src, 0) !== src;
+        }
+
+        // Resume at `seconds`, moving to a source that can open there if the current one can't
+        async function resumeAt(seconds) {
+            startTrackingFrom(seconds);
+            pendingStartAt = seconds;
+            if (currentSourceIndex < 0) return;  // selectWorkingSource applies pendingStartAt
+
+            let target = currentSourceIndex;
+            if (!supportsStartAt(target)) {
+                for (let i = 0; i < embedSources.length; i++) {
+                    if (supportsStartAt(i) && await checkSource(i)) { target = i; break; }
+                }
+            }
+            showLoading(target + 1);
+            loadSource(target, seconds);
+            announceResume(target, seconds);
+            setTimeout(hideLoading, 8000);
+        }
+
+        function announceResume(index, seconds) {
+            if (seconds <= 0) return;
+            showToast(supportsStartAt(index)
+                ? `Resuming from ${formatTime(seconds)}`
+                : `Source ${index + 1} can't jump ahead: skip to ${formatTime(seconds)}`);
         }
 
         window.resumePlayback = function(seconds) {
-            // Reload the current source at the saved position (startAt on the sources that support it)
-            currentProgress = seconds;
-            playbackStartTime = Date.now() - seconds * 1000;
-            if (currentSourceIndex >= 0) {
-                loadSource(currentSourceIndex, seconds);
-            } else {
-                pendingStartAt = seconds;  // applied once selectWorkingSource picks one
-            }
             dismissResumePrompt();
-            showToast('Resuming playback...');
+            resumeAt(seconds);
+        };
+
+        window.startOver = function() {
+            dismissResumePrompt();
+            if (!progressReady) startTrackingFrom(0);
         };
 
         window.dismissResumePrompt = function() {
+            clearTimeout(resumePromptTimer);
             const prompt = document.querySelector('.resume-prompt');
             if (prompt) {
                 prompt.classList.remove('show');
@@ -590,9 +649,14 @@
             return sourceChecks.get(index);
         }
 
-        // Try each source in order and return the first one that can be framed
+        // Try each source in order and return the first one that can be framed.
+        // When resuming, sources that can open at a given second go first.
         async function selectWorkingSource(sources) {
-            for (let i = 0; i < sources.length; i++) {
+            let order = sources.map((_, i) => i);
+            if (resumeFromUrl > 0) {
+                order = [...order.filter(supportsStartAt), ...order.filter(i => !supportsStartAt(i))];
+            }
+            for (const i of order) {
                 showLoading(i + 1);
                 if (await checkSource(i)) return i;
             }
@@ -673,15 +737,23 @@
             markThemedSources();
             showControls();
             checkWatchedStatus();
+            if (resumeFromUrl > 0) {
+                startTrackingFrom(resumeFromUrl);
+                pendingStartAt = resumeFromUrl;
+            }
             loadSavedProgress();
             startFallbackTracking();
-            setTimeout(saveProgress, 5000);  // record the view
+            setTimeout(saveProgress, 5000);  // record the view (skipped until the start is known)
 
             selectWorkingSource(embedSources).then(index => {
-                if (index >= 0) {
-                    loadSource(index, pendingStartAt);
-                } else {
+                if (index < 0) {
                     showError();
+                } else if (pendingStartAt > 0) {
+                    // Resuming (from the card, or Resume clicked while sources were checked)
+                    currentSourceIndex = index;
+                    resumeAt(pendingStartAt);
+                } else {
+                    loadSource(index, 0);
                 }
             }).catch(err => {
                 console.error('Error selecting embed source', err);

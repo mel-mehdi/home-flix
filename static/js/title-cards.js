@@ -7,6 +7,14 @@ function setupTitleCardInteractions() {
         const card = e.target.closest('.title-card');
         if (!card) return;
 
+        // Continue Watching cards: card or play button resumes in the player where the viewer stopped
+        if (card.dataset.resumeUrl &&
+            !e.target.closest('.title-card-add-button, .title-card-like-button, .title-card-expand-button, .remove-from-continue-watching')) {
+            e.stopPropagation();
+            window.location.href = card.dataset.resumeUrl;
+            return;
+        }
+
         // Play button click
         if (e.target.closest('.title-card-play-button')) {
             e.stopPropagation();
