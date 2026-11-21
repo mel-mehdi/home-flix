@@ -633,258 +633,406 @@ textarea {
     transform: translateX(-50%) translateY(0);
 }
 
-/* Source Menu */
+/* Source picker: Netflix-style panel (sheet from the bottom on phones) */
+.source-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 190;
+    background: rgba(0, 0, 0, 0.55);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.source-backdrop.show {
+    opacity: 1;
+}
+
 .source-menu {
     position: absolute;
-    top: 80px;
-    right: 60px;
-    background: rgba(20, 20, 20, 0.98);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    padding: 20px;
-    min-width: 300px;
-    max-width: 400px;
+    top: 84px;
+    right: 48px;
     z-index: 200;
-    backdrop-filter: blur(20px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-    opacity: 0;
-    transform: translateY(-10px);
-    transition: all 0.3s ease;
+    width: 400px;
+    max-height: calc(100% - 120px);
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    background: #181818;
+    border-radius: 8px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75);
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+    transform-origin: top right;
+    transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 .source-menu.show {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
+}
+
+.source-menu[hidden],
+.source-backdrop[hidden] {
+    display: none;
 }
 
 .source-menu-header {
     display: flex;
+    align-items: flex-start;
     justify-content: space-between;
-    align-items: center;
-    padding-bottom: 12px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    gap: 16px;
+    padding: 22px 20px 14px 24px;
 }
 
 .source-menu-header h3 {
-    font-size: 18px;
-    font-weight: 600;
     margin: 0;
+    font-size: 22px;
+    font-weight: 700;
     color: #ffffff;
+}
+
+.source-menu-subtitle {
+    margin: 6px 0 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: #a3a3a3;
 }
 
 .close-menu-btn {
-    background: transparent;
-    border: none;
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 24px;
-    cursor: pointer;
-    padding: 0;
-    width: 32px;
-    height: 32px;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 4px;
-    transition: all 0.2s ease;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: #2a2a2a;
+    color: #ffffff;
+    transition: background-color 0.15s ease;
+}
+
+.close-menu-btn svg {
+    width: 20px;
+    height: 20px;
 }
 
 .close-menu-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #ffffff;
+    background: #404040;
 }
 
+/* Source rows */
 .source-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 4px 8px 8px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #4d4d4d transparent;
 }
 
 .source-option {
     display: flex;
     align-items: center;
-    gap: 12px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
-    color: rgba(255, 255, 255, 0.8);
-    padding: 12px 16px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    gap: 14px;
+    width: 100%;
+    min-height: 60px;
+    padding: 10px 16px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: #b3b3b3;
+    font-family: inherit;
     text-align: left;
-    justify-content: flex-start;
+    transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.source-option:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
+.source-option:hover,
+.source-option:focus-visible {
+    background: rgba(255, 255, 255, 0.08);
     color: #ffffff;
+    outline: none;
+}
+
+.source-option:focus-visible {
+    box-shadow: inset 0 0 0 2px #ffffff;
 }
 
 .source-option.active {
-    background: rgba(229, 9, 20, 0.2);
-    border: 2px solid #e50914;
     color: #ffffff;
 }
 
-.source-option.active .source-name {
-    color: #e50914;
-    font-weight: 600;
+/* Checkmark only on the source that is playing, like Netflix's audio menu */
+.source-check {
+    display: inline-flex;
+    width: 22px;
+    flex-shrink: 0;
+    visibility: hidden;
 }
 
-.source-option.active svg circle {
-    fill: #e50914;
+.source-check svg {
+    width: 22px;
+    height: 22px;
+}
+
+.source-option.active .source-check {
+    visibility: visible;
 }
 
 .source-info-text {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
     flex: 1;
+    min-width: 0;
 }
 
 .source-name {
-    font-size: 14px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 16px;
     font-weight: 500;
+}
+
+.source-option.active .source-name {
+    font-weight: 700;
 }
 
 .source-domain {
-    font-size: 11px;
-    color: rgba(255, 255, 255, 0.5);
-}
-
-.source-option.active .source-domain {
-    color: rgba(229, 9, 20, 0.7);
-}
-
-.source-info {
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.6);
-    margin: 0;
-    text-align: center;
-    line-height: 1.4;
+    color: #808080;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.source-info-top {
-    font-size: 13px;
-    color: rgba(255, 255, 255, 0.7);
-    margin: 0;
-    line-height: 1.5;
-    padding: 0 4px;
+.source-tag {
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    line-height: 16px;
 }
 
-.source-name {
-    font-size: 14px;
-    font-weight: 500;
+.source-tag[hidden] {
+    display: none;
 }
 
+.source-tag-playing {
+    display: none;
+    background: #e50914;
+    color: #ffffff;
+}
+
+.source-option.active .source-tag-playing {
+    display: inline-block;
+}
+
+.source-tag-themed {
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    color: #d9d9d9;
+}
+
+/* Live status from /embed_check */
 .source-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    font-size: 12px;
+    color: #808080;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4d4d4d;
+}
+
+.source-status[data-status="unknown"] .status-dot {
+    display: none;
+}
+
+.source-status[data-status="checking"] .status-dot {
+    background: #a3a3a3;
+    animation: status-blink 1s ease-in-out infinite;
+}
+
+.source-status[data-status="online"] {
+    color: #46d369;
+}
+
+.source-status[data-status="online"] .status-dot {
+    background: #46d369;
+}
+
+.source-status[data-status="unavailable"] .status-dot {
+    background: #e50914;
+}
+
+.source-option:has(.source-status[data-status="unavailable"]):not(.active) .source-name {
+    opacity: 0.55;
+}
+
+@keyframes status-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* "Video not playing?" help */
+.source-help {
+    flex-shrink: 0;
+    padding: 0 24px;
+    border-top: 1px solid #2f2f2f;
+}
+
+.source-help summary {
     display: flex;
     align-items: center;
-    color: rgba(255, 255, 255, 0.3);
-    font-size: 11px;
-}
-
-.source-status.checking {
-    color: rgba(255, 193, 7, 0.8);
-}
-
-.source-status.available {
-    color: rgba(76, 175, 80, 0.9);
-}
-
-.source-status.unavailable {
-    color: rgba(244, 67, 54, 0.8);
-}
-
-.source-status svg {
-    animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-
-.troubleshooting-tips {
-    background: rgba(229, 9, 20, 0.1);
-    border: 1px solid rgba(229, 9, 20, 0.3);
-    border-radius: 6px;
-    padding: 12px 16px;
-    margin-top: 8px;
-}
-
-.tip-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: #ffffff;
-    margin-bottom: 8px;
-}
-
-.troubleshooting-tips ul {
+    justify-content: space-between;
+    min-height: 52px;
     list-style: none;
-    padding: 0;
-    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #d9d9d9;
+    cursor: pointer !important;
 }
 
-.troubleshooting-tips li {
+.source-help summary::-webkit-details-marker {
+    display: none;
+}
+
+.source-help summary:hover {
+    color: #ffffff;
+}
+
+.source-help-chevron {
+    width: 22px;
+    height: 22px;
+    transition: transform 0.2s ease;
+}
+
+.source-help[open] .source-help-chevron {
+    transform: rotate(180deg);
+}
+
+.source-help-tips {
+    margin: 0 0 14px;
+    padding-left: 18px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #a3a3a3;
+}
+
+.source-help-label {
+    margin: 0 0 8px;
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.8);
-    padding: 4px 0;
-    padding-left: 16px;
-    position: relative;
-}
-
-.troubleshooting-tips li:before {
-    content: "•";
-    position: absolute;
-    left: 0;
-    color: #e50914;
-    font-weight: bold;
-}
-
-.direct-links {
-    background: rgba(33, 150, 243, 0.1);
-    border: 1px solid rgba(33, 150, 243, 0.3);
-    border-radius: 6px;
-    padding: 12px 16px;
-    margin-top: 8px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: #808080;
 }
 
 .direct-link-buttons {
     display: flex;
-    gap: 8px;
-    margin-top: 8px;
     flex-wrap: wrap;
+    gap: 8px;
+    padding-bottom: 18px;
 }
 
 .direct-link-btn {
-    background: rgba(33, 150, 243, 0.2);
-    border: 1px solid rgba(33, 150, 243, 0.4);
-    border-radius: 4px;
-    color: #ffffff;
-    padding: 8px 16px;
-    font-size: 12px;
-    font-weight: 500;
-    text-decoration: none;
-    transition: all 0.2s ease;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    min-height: 36px;
+    padding: 0 16px;
+    border-radius: 4px;
+    background: rgba(109, 109, 110, 0.7);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color 0.15s ease;
 }
 
 .direct-link-btn:hover {
-    background: rgba(33, 150, 243, 0.3);
-    border-color: rgba(33, 150, 243, 0.6);
-    transform: translateY(-1px);
+    background: rgba(109, 109, 110, 0.45);
+    color: #ffffff;
+    text-decoration: none;
 }
 
-.direct-link-btn:active {
-    transform: translateY(0);
+/* Phones: sheet sliding up from the bottom */
+@media screen and (max-width: 768px) {
+    .source-menu {
+        top: auto;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: auto;
+        max-height: 85%;
+        padding-bottom: env(safe-area-inset-bottom);
+        border-radius: 16px 16px 0 0;
+        transform: translateY(100%);
+        transform-origin: bottom center;
+    }
+
+    .source-menu.show {
+        transform: none;
+    }
+
+    .source-menu::before {
+        content: "";
+        display: block;
+        flex-shrink: 0;
+        width: 40px;
+        height: 4px;
+        margin: 10px auto 0;
+        border-radius: 2px;
+        background: #4d4d4d;
+    }
+
+    .source-menu-header {
+        padding: 14px 16px 10px 20px;
+    }
+
+    .source-menu-header h3 {
+        font-size: 19px;
+    }
+
+    .source-option {
+        padding: 10px 12px;
+    }
+
+    .source-help {
+        padding: 0 20px;
+    }
+}
+
+/* Phones held sideways: side panel, full height */
+@media screen and (max-height: 500px) and (orientation: landscape) {
+    .source-menu {
+        top: 8px;
+        right: 8px;
+        bottom: 8px;
+        left: auto;
+        width: 380px;
+        max-height: none;
+        border-radius: 8px;
+        transform: translateX(16px);
+    }
+
+    .source-menu::before,
+    .source-menu-subtitle {
+        display: none;
+    }
 }
 
 /* Full screen styles */
@@ -1022,74 +1170,6 @@ button, a, .clickable {
         max-width: none;
     }
 
-    /* Source menu optimizations */
-    .source-menu {
-        left: 10px;
-        right: 10px;
-        top: 10px;
-        bottom: 10px;
-        max-width: none;
-        max-height: none;
-        border-radius: 12px;
-    }
-    
-    .source-menu-header {
-        padding: 16px;
-    }
-    
-    .source-menu-header h3 {
-        font-size: 18px;
-    }
-    
-    .close-menu-btn {
-        width: 36px;
-        height: 36px;
-        font-size: 24px;
-    }
-    
-    .source-info-top {
-        padding: 0 16px 12px;
-        font-size: 13px;
-    }
-    
-    .source-list {
-        padding: 0 12px 12px;
-        max-height: calc(100vh - 250px);
-    }
-    
-    .source-option {
-        padding: 14px 12px;
-        border-radius: 8px;
-    }
-    
-    .source-name {
-        font-size: 14px;
-    }
-    
-    .source-domain {
-        font-size: 11px;
-    }
-    
-    .troubleshooting-tips {
-        padding: 12px 16px;
-        margin: 12px;
-    }
-    
-    .direct-links {
-        padding: 12px 16px;
-        margin: 12px;
-    }
-    
-    .direct-link-buttons {
-        flex-direction: column;
-    }
-    
-    .direct-link-btn {
-        width: 100%;
-        justify-content: center;
-        padding: 10px 16px;
-        font-size: 13px;
-    }
     
     /* Loading indicator */
     .loading-indicator {
@@ -1150,81 +1230,7 @@ button, a, .clickable {
     .episode-title {
         font-size: 15px;
     }
-    
-    /* Source menu for small screens */
-    .source-menu {
-        left: 5px;
-        right: 5px;
-        top: 5px;
-        bottom: 5px;
-        border-radius: 10px;
-    }
-    
-    .source-menu-header {
-        padding: 12px;
-    }
-    
-    .source-menu-header h3 {
-        font-size: 16px;
-    }
-    
-    .close-menu-btn {
-        width: 32px;
-        height: 32px;
-        font-size: 20px;
-    }
-    
-    .source-info-top {
-        padding: 0 12px 10px;
-        font-size: 12px;
-        line-height: 1.4;
-    }
-    
-    .source-list {
-        padding: 0 8px 8px;
-    }
-    
-    .source-option {
-        padding: 12px 10px;
-    }
-    
-    .source-option svg {
-        width: 14px;
-        height: 14px;
-    }
-    
-    .source-name {
-        font-size: 13px;
-    }
-    
-    .source-domain {
-        font-size: 10px;
-    }
-    
-    .source-status svg {
-        width: 10px;
-        height: 10px;
-    }
-    
-    .troubleshooting-tips,
-    .direct-links {
-        padding: 10px 12px;
-        margin: 8px;
-    }
-    
-    .tip-title {
-        font-size: 12px;
-    }
-    
-    .troubleshooting-tips li,
-    .direct-links p {
-        font-size: 11px;
-    }
-    
-    .direct-link-btn {
-        padding: 8px 12px;
-        font-size: 12px;
-    }
+
     
     /* Loading and error states */
     .loader {
@@ -1281,12 +1287,7 @@ button, a, .clickable {
     .episode-title {
         font-size: 15px;
     }
-    
-    .source-menu {
-        top: 10px;
-        bottom: 10px;
-        max-height: calc(100vh - 20px);
-    }
+
     
     .next-episode-quick-btn {
         padding: 6px 10px;
@@ -1297,26 +1298,16 @@ button, a, .clickable {
 /* Touch-friendly enhancements */
 @media (hover: none) and (pointer: coarse) {
     /* Larger touch targets */
-    .source-option,
     .retry-button,
     .direct-link-btn {
         min-height: 44px;
     }
-    
+
     .close-menu-btn {
-        min-width: 44px;
-        min-height: 44px;
+        width: 44px;
+        height: 44px;
     }
-    
-    /* Remove hover effects, use active states */
-    .source-option:active {
-        transform: scale(0.98);
-    }
-    
-    .direct-link-btn:active {
-        transform: translateY(0);
-        background: rgba(33, 150, 243, 0.4);
-    }
+
 }
 
 /* iOS-specific fixes */
