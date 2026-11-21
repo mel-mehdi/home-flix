@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="player-container">
+    <div class="player-container" id="playerContainer">
         <div class="video-wrapper">
             <!-- Loading Indicator -->
             <div class="loading-indicator" id="loadingIndicator">
@@ -23,7 +23,7 @@
                 <p>Loading video...</p>
                 <p class="loading-source" id="loadingSource">Trying source 1...</p>
             </div>
-            
+
             <!-- Error Message -->
             <div class="error-message" id="errorMessage" style="display: none;">
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -33,12 +33,12 @@
                 <p>The video source is currently unavailable. Please try a different source.</p>
                 <button class="retry-button" onclick="showSourceMenu()">Try Different Source</button>
             </div>
-            
-        <iframe id="videoIframe"
-            src="about:blank" 
-                    width="100%" 
-                    height="100%" 
-                    frameborder="0" 
+
+            <iframe id="videoIframe"
+                    src="about:blank"
+                    width="100%"
+                    height="100%"
+                    frameborder="0"
                     allowfullscreen
                     webkitallowfullscreen
                     mozallowfullscreen
@@ -46,74 +46,45 @@
                     referrerpolicy="origin"
                     onload="typeof hideLoading === 'function' && hideLoading()"
                     onerror="typeof showError === 'function' && showError()"></iframe>
-            
+
+            <!-- Netflix-style top bar, the same over every source.
+                 Playback controls stay inside each source's own player: none of the
+                 providers accepts play/pause/seek commands from this page. -->
             <div class="player-controls" id="topControls">
                 <div class="top-bar">
                     {% if type == 'episode' and season is defined %}
-                    <a href="/series/{{ imdb_id }}/season/{{ season }}" class="back-button">
-                        ← Back
-                    </a>
+                    {% set back_href = '/series/' ~ imdb_id ~ '/season/' ~ season %}
                     {% elif type == 'movie' %}
-                    <a href="/movie/{{ imdb_id }}" class="back-button">
-                        ← Back
-                    </a>
+                    {% set back_href = '/movie/' ~ imdb_id %}
                     {% else %}
-                    <a href="javascript:history.back()" class="back-button">
-                        ← Back
-                    </a>
+                    {% set back_href = 'javascript:history.back()' %}
                     {% endif %}
-                    
-                    <div class="episode-info">
-                        <h2 class="episode-title">{{ title }}</h2>
-                        <p class="series-info">{{ type|title }} <span id="watchedBadge" class="watched-badge" style="display: none;">✓ Watched</span></p>
-                    </div>
-                    
-                    <!-- Source Switcher Button -->
-                    <button class="source-switcher-btn" id="sourceSwitch" onclick="showSourceMenu()">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="currentColor"/>
+                    <a href="{{ back_href }}" class="back-button" aria-label="Back">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor"/>
                         </svg>
-                        Change Source
-                    </button>
-                </div>
-            </div>
+                    </a>
 
-            <div class="netflix-controls" id="bottomControls">
-                <div class="progress-track">
-                    <input class="progress-slider" id="progressSlider" type="range" min="0" max="7200" value="0" aria-label="Playback position">
-                    <div class="progress-fill" id="progressFill"></div>
-                </div>
-                <div class="bottom-control-row">
-                    <div class="bottom-controls-left">
-                        <button class="netflix-control-button" id="playPauseButton" type="button" aria-label="Pause">
-                            <svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M6 5h4v14H6zm8 0h4v14h-4z" fill="currentColor"/>
-                            </svg>
-                        </button>
-                        <button class="netflix-control-button" id="rewindButton" type="button" aria-label="Rewind 10 seconds">
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M11 4a8 8 0 1 1-7.7 10H1l3.5 4L8 14H5.2A6 6 0 1 0 11 6V4zm1.2 5.1v2.2H9.5v1.2h2.7v3.2h1.5v-4.4h-1.5v-2.2z" fill="currentColor"/>
-                            </svg>
-                        </button>
-                        <button class="netflix-control-button" id="forwardButton" type="button" aria-label="Forward 10 seconds">
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M13 4a8 8 0 1 0 7.7 10H23l-3.5 4L16 14h2.8A6 6 0 1 1 13 6V4zm-1.2 5.1v2.2h2.7v1.2h-2.7v3.2H10.3v-4.4h1.5v-2.2z" fill="currentColor"/>
-                            </svg>
-                        </button>
-                        <button class="netflix-control-button" id="muteButton" type="button" aria-label="Mute">
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3c0-1.77-1-3.29-2.5-4.03v8.05A4.47 4.47 0 0 0 16.5 12zm-2.5-8.5v2.06a7 7 0 0 1 0 12.88v2.06A9 9 0 0 0 14 3.5z" fill="currentColor"/>
-                            </svg>
-                        </button>
-                        <span class="playback-time" id="playbackTime">0:00</span>
+                    <div class="episode-info">
+                        {% if type == 'episode' and series_title %}
+                        <h2 class="episode-title">{{ series_title }}</h2>
+                        <p class="series-info">Season {{ season }} · Episode {{ episode }}
+                            <span id="watchedBadge" class="player-watched-badge" hidden>✓ Watched</span></p>
+                        {% else %}
+                        <h2 class="episode-title">{{ title }}</h2>
+                        <p class="series-info">{{ 'Movie' if type == 'movie' else 'Series' }}
+                            <span id="watchedBadge" class="player-watched-badge" hidden>✓ Watched</span></p>
+                        {% endif %}
                     </div>
-                    <div class="bottom-controls-right">
-                        <button class="netflix-control-button" id="sourceControlButton" type="button" aria-label="Change source">
+
+                    <div class="top-actions">
+                        <button class="top-icon-button source-switcher-btn" id="sourceSwitch" type="button" onclick="showSourceMenu()" aria-label="Change source">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 17.93V18h-2v1.93A8 8 0 0 1 4.07 13H6v-2H4.07A8 8 0 0 1 11 4.07V6h2V4.07A8 8 0 0 1 19.93 11H18v2h1.93A8 8 0 0 1 13 19.93zM12 7l-4 5h3v5h2v-5h3l-4-5z" fill="currentColor"/>
+                                <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4zm14-1v6l5-3z" fill="currentColor"/>
                             </svg>
+                            <span class="top-button-label" id="currentSourceLabel">Source 1</span>
                         </button>
-                        <button class="netflix-control-button" id="fullscreenButton" type="button" aria-label="Enter fullscreen">
+                        <button class="top-icon-button" id="fullscreenButton" type="button" aria-label="Enter fullscreen">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M5 5h5V3H3v7h2V5zm9-2v2h5v5h2V3h-7zm5 16h-5v2h7v-7h-2v5zM5 14H3v7h7v-2H5v-5z" fill="currentColor"/>
                             </svg>
@@ -121,7 +92,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Source Selector Menu -->
             <div class="source-menu" id="sourceMenu" style="display: none;">
                 <div class="source-menu-header">
@@ -132,9 +103,9 @@
                 <div class="source-list">
                     {% if embed_sources %}
                         {% for source in embed_sources %}
-                        <button class="source-option {% if loop.index == 1 %}active{% endif %}" 
-                                data-source="{{ source }}" 
-                                onclick="switchSource('{{ source }}', this)">
+                        <button class="source-option {% if loop.index == 1 %}active{% endif %}"
+                                data-index="{{ loop.index0 }}"
+                                onclick="switchSource({{ loop.index0 }})">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
                             </svg>
@@ -181,185 +152,187 @@
                     </div>
                 </div>
             </div>
-
-
         </div>
     </div>
 
     <script>
-        let controlsVisible = true;
-        let controlsTimeout;
+        const videoType = {{ type|tojson }};
+        const videoTitle = {{ title|tojson }};
+        const imdbId = {{ imdb_id|tojson }};
+        const tmdbId = {{ (tmdb_id or '')|tojson }};
+        const season = {% if season is defined and season is not none %}{{ season|int }}{% else %}null{% endif %};
+        const episode = {% if episode is defined and episode is not none %}{{ episode|int }}{% else %}null{% endif %};
+        const seriesTitle = {{ (series_title or title)|tojson }};
+        const embedSources = {{ (embed_sources or [])|tojson }};
+
+        // Hosts allowed to send us player events: the hosts of our own sources
+        const sourceHosts = embedSources
+            .map(src => { try { return new URL(src).hostname.toLowerCase(); } catch (e) { return null; } })
+            .filter(Boolean);
+
+        const NETFLIX_RED = 'E50914';
+        const NETFLIX_TRACK = '5A5A5A';
+
+        let currentSourceIndex = -1;  // -1 until a working source is chosen
+        let pendingStartAt = 0;       // resume position chosen before a source was ready
+        let currentProgress = 0;   // seconds
+        let videoDuration = 0;     // seconds; 0 until a source reports it
+        let hasRealPlayerEvents = false;
+        let isPaused = false;
+        let lastSavedAt = 0;
         let playbackStartTime = Date.now();
-        let currentProgress = 0;
-        let videoDuration = 0;
-        let isPlaying = true;
-        let isMuted = false;
-        
-        const videoType = "{{ type }}";
-        const videoTitle = "{{ title }}";
-        const imdbId = "{{ imdb_id }}";
-        const tmdbId = "{{ tmdb_id }}";
-        const season = {% if season is defined %}{{ season }}{% else %}null{% endif %};
-        const episode = {% if episode is defined %}{{ episode }}{% else %}null{% endif %};
-        const currentSeason = {% if season %}{{ season }}{% else %}null{% endif %};
-        const currentEpisode = {% if episode %}{{ episode }}{% else %}null{% endif %};
-        const seriesTitle = "{{ series_title if series_title else title }}";
-        let currentSourceIndex = 0;
-        let nextEpisodeData = null;
-        // List of embed sources rendered from server
-        const embedSources = [
-            {% if embed_sources %}
-                {% for s in embed_sources %}
-                    "{{ s }}"{{ "," if not loop.last }}
-                {% endfor %}
-            {% endif %}
-        ];
+        let controlsTimeout;
 
-        function prepareSourceUrl(sourceUrl) {
+        // Theme each source's own player like Netflix, using only the parameters
+        // the provider supports. Unknown hosts are left untouched, because some
+        // (2embed, multiembed) put the episode in a hand-built query string.
+        function prepareSourceUrl(sourceUrl, startAt) {
+            let url;
             try {
-                const url = new URL(sourceUrl);
-                const host = url.hostname.toLower();
-
-                url.searchParams.set('controls', '0');
-                url.searchParams.set('autoplay', '1');
-
-                if (host.includes('vidlink')) {
-                    url.searchParams.set('controls', 'false');
-                    url.searchParams.set('autoplay', 'true');
-                } else if (host.includes('vidrock')) {
-                    url.searchParams.set('controls', 'false');
-                    url.searchParams.set('autoplay', 'true');
-                } else if (host.includes('vidfast')) {
-                    url.searchParams.set('controls', 'false');
-                    url.searchParams.set('autoPlay', 'true');
-                } else if (host.includes('vixsrc')) {
-                    url.searchParams.set('controls', '0');
-                    url.searchParams.set('autoplay', '1');
-                }
-
-                return url.toString();
+                url = new URL(sourceUrl);
             } catch (error) {
-                console.warn('Could not prepare source URL:', error);
                 return sourceUrl;
             }
+            const host = url.hostname.toLowerCase();
+            const params = url.searchParams;
+            const start = Math.floor(startAt || 0);
+
+            if (host.includes('vidlink')) {
+                // Documented on vidlink.pro
+                params.set('primaryColor', NETFLIX_RED);
+                params.set('secondaryColor', NETFLIX_TRACK);
+                params.set('iconColor', 'FFFFFF');
+                params.set('icons', 'vid');
+                params.set('title', 'false');   // the top bar already shows it
+                params.set('poster', 'true');
+                params.set('autoplay', 'true');
+                if (videoType === 'episode') params.set('nextbutton', 'true');
+                if (start > 0) params.set('startAt', start);
+            } else if (host.includes('vixsrc')) {
+                // Documented on vixsrc.to
+                params.set('primaryColor', NETFLIX_RED);
+                params.set('secondaryColor', NETFLIX_TRACK);
+                params.set('autoplay', 'true');
+                if (start > 0) params.set('startAt', start);
+            } else if (host.includes('vidfast')) {
+                // vidfast's docs page could not be read; theme and startAt are its
+                // usual names and are ignored if unsupported
+                params.set('theme', NETFLIX_RED);
+                if (start > 0) params.set('startAt', start);
+            } else {
+                return sourceUrl;
+            }
+            return url.toString();
         }
-        
-        // Show/hide controls on mouse movement
-        document.addEventListener('mousemove', showControls);
-        document.addEventListener('click', showControls);
-        
+
+        function loadSource(index, startAt) {
+            const src = embedSources[index];
+            if (!src) return;
+            currentSourceIndex = index;
+            hasRealPlayerEvents = false;
+            document.getElementById('videoIframe').src = prepareSourceUrl(src, startAt);
+            document.querySelectorAll('.source-option').forEach(btn => {
+                btn.classList.toggle('active', Number(btn.dataset.index) === index);
+            });
+            const label = document.getElementById('currentSourceLabel');
+            if (label) label.textContent = `Source ${index + 1}`;
+        }
+
+        // ---- Auto-hiding top bar -------------------------------------------------
+        // The iframe swallows mouse events, so the bar also reveals itself when the
+        // pointer reaches it, when the page regains focus, or when the video pauses.
         function showControls() {
-            const controls = document.getElementById('topControls');
-            const bottomControls = document.getElementById('bottomControls');
-            controls.style.opacity = '1';
-            bottomControls.style.opacity = '1';
-            bottomControls.style.transform = 'translateY(0)';
-            controlsVisible = true;
-            
+            const container = document.getElementById('playerContainer');
+            container.classList.remove('controls-hidden');
             clearTimeout(controlsTimeout);
-            controlsTimeout = setTimeout(() => {
-                controls.style.opacity = '0';
-                bottomControls.style.opacity = '0';
-                controlsVisible = false;
-            }, 3000);
+            controlsTimeout = setTimeout(hideControls, 3000);
         }
-        
-        // Hide controls when not moving mouse
-        document.addEventListener('mouseleave', function() {
-            const controls = document.getElementById('topControls');
-            const bottomControls = document.getElementById('bottomControls');
-            controls.style.opacity = '0';
-            bottomControls.style.opacity = '0';
-            controlsVisible = false;
+
+        function hideControls() {
+            if (isPaused || document.getElementById('sourceMenu').classList.contains('show')) return;
+            document.getElementById('playerContainer').classList.add('controls-hidden');
+        }
+
+        document.addEventListener('mousemove', showControls);
+        document.addEventListener('touchstart', showControls, { passive: true });
+        document.addEventListener('mouseleave', hideControls);
+        // Clicking into the source's player moves focus into the iframe
+        window.addEventListener('blur', showControls);
+
+        // ---- Events from the source's player ------------------------------------
+        // VidLink, VixSrc and VidFast post { type: 'PLAYER_EVENT', data: { event,
+        // currentTime, duration } }. Only accept them from our own source hosts.
+        // Compare by brand ("vidfast" in vidfast.pro), since providers move between
+        // domains: vidfast.pro redirects to vidfast.vc.
+        function hostBrand(host) {
+            const labels = host.split('.');
+            return labels.length >= 2 ? labels[labels.length - 2] : host;
+        }
+        const sourceBrands = new Set(sourceHosts.map(hostBrand));
+
+        function isFromSourceHost(origin) {
+            try {
+                return sourceBrands.has(hostBrand(new URL(origin).hostname.toLowerCase()));
+            } catch (e) {
+                return false;
+            }
+        }
+
+        window.addEventListener('message', (event) => {
+            if (!isFromSourceHost(event.origin)) return;
+            let message = event.data;
+            if (typeof message === 'string') {
+                try { message = JSON.parse(message); } catch (e) { return; }
+            }
+            if (!message || message.type !== 'PLAYER_EVENT' || !message.data) return;
+
+            const data = message.data;
+            const time = Number(data.currentTime);
+            const duration = Number(data.duration);
+            hasRealPlayerEvents = true;
+            if (Number.isFinite(time) && time >= 0) currentProgress = time;
+            if (Number.isFinite(duration) && duration > 0) videoDuration = duration;
+
+            switch (data.event) {
+                case 'play':
+                    isPaused = false;
+                    hideLoading();
+                    showControls();
+                    break;
+                case 'pause':
+                    isPaused = true;
+                    showControls();
+                    saveProgress();
+                    break;
+                case 'seeked':
+                    saveProgress();
+                    break;
+                case 'ended':
+                    if (videoDuration) currentProgress = videoDuration;
+                    saveProgress();
+                    break;
+                case 'timeupdate':
+                    if (Date.now() - lastSavedAt > 15000) saveProgress();
+                    break;
+            }
         });
-        
-        // Show controls initially
-        showControls();
-        
-        // Simulate video progress tracking (since iframe blocks direct access)
-        function startProgressTracking() {
+
+        // Sources that send no events: estimate from the time the page has been open
+        function startFallbackTracking() {
             setInterval(() => {
-                currentProgress = (Date.now() - playbackStartTime) / 1000; // seconds
-                updatePlaybackProgress();
-                
-                // Save progress every 10 seconds
-                if (Math.floor(currentProgress) % 10 === 0) {
-                    saveProgress();
-                }
-                
-                // Auto-mark as watched when reaching 95% completion
-                const progressPercent = (currentProgress / videoDuration) * 100;
-                if (progressPercent >= 95 && !window.hasAutoMarkedWatched) {
-                    window.hasAutoMarkedWatched = true;
-                    // Force save progress to trigger auto-mark
-                    saveProgress();
-                }
+                if (hasRealPlayerEvents) return;
+                currentProgress = (Date.now() - playbackStartTime) / 1000;
+                if (Date.now() - lastSavedAt > 15000) saveProgress();
             }, 1000);
         }
 
-        function formatTime(seconds) {
-            seconds = Math.max(0, Math.floor(seconds));
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const secs = seconds % 60;
-            return hours > 0
-                ? `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
-                : `${minutes}:${String(secs).padStart(2, '0')}`;
+        function estimatedDuration() {
+            return videoDuration || (videoType === 'movie' ? 7200 : 2700);
         }
 
-        function updatePlaybackProgress() {
-            const slider = document.getElementById('progressSlider');
-            const fill = document.getElementById('progressFill');
-            const time = document.getElementById('playbackTime');
-            if (!slider || !fill || !time) return;
-
-            const duration = videoDuration || (videoType === 'movie' ? 7200 : 2700);
-            slider.max = duration;
-            if (document.activeElement !== slider) slider.value = Math.min(currentProgress, duration);
-            const percent = Math.min(100, (currentProgress / duration) * 100);
-            fill.style.width = `${percent}%`;
-            time.textContent = `${formatTime(currentProgress)} / ${formatTime(duration)}`;
-        }
-
-        function sendPlayerCommand(command, value) {
-            const iframe = document.getElementById('videoIframe');
-            if (!iframe || !iframe.contentWindow) return;
-            const payloads = [
-                { type: command, value },
-                { event: command, value },
-                { command, value },
-                command === 'seek' ? { seek: value } : { [command]: true }
-            ];
-            payloads.forEach(payload => iframe.contentWindow.postMessage(payload, '*'));
-        }
-
-        function setPlayState(playing) {
-            isPlaying = playing;
-            const labels = document.querySelectorAll('#playPauseButton');
-            const playSvg = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>';
-            const pauseSvg = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z" fill="currentColor"/></svg>';
-            labels.forEach(button => {
-                if (!button) return;
-                button.innerHTML = playing ? pauseSvg : playSvg;
-                button.setAttribute('aria-label', playing ? 'Pause' : 'Play');
-            });
-        }
-
-        function togglePlayback() {
-            setPlayState(!isPlaying);
-            sendPlayerCommand(isPlaying ? 'play' : 'pause');
-        }
-
-        function seekTo(seconds) {
-            currentProgress = Math.max(0, Math.min(seconds, videoDuration || 7200));
-            playbackStartTime = Date.now() - (currentProgress * 1000);
-            sendPlayerCommand('seek', currentProgress);
-            updatePlaybackProgress();
-        }
-        
-
-        
+        // ---- Progress -----------------------------------------------------------
         function saveProgress() {
+            lastSavedAt = Date.now();
             const progressData = {
                 type: videoType === 'episode' ? 'series' : videoType,
                 id: imdbId,
@@ -367,146 +340,96 @@
                 tmdb_id: tmdbId,
                 title: videoTitle,
                 progress: Math.floor(currentProgress),
-                duration: Math.floor(videoDuration || 3600)
+                duration: Math.floor(estimatedDuration())
             };
-            
-            // Add episode info for series
-            if (videoType === 'episode' && typeof season !== 'undefined' && typeof episode !== 'undefined') {
+
+            if (videoType === 'episode' && season !== null && episode !== null) {
                 progressData.season = season;
                 progressData.episode = episode;
             }
-            
+
             fetch('/api/watch_progress', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(progressData)
+                body: JSON.stringify(progressData),
+                keepalive: true
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    console.log('Progress saved:', data.progress_percent + '%');
-                    
-                    // Show notification when auto-marked as watched
-                    if (data.is_completed && !window.hasShownWatchedNotification) {
-                        window.hasShownWatchedNotification = true;
-                        showToast('✓ Automatically marked as watched');
-                        console.log('Auto-marked as watched!');
-                        
-                        // Show the watched badge
-                        const badge = document.getElementById('watchedBadge');
-                        if (badge) {
-                            badge.style.display = 'inline';
-                            badge.style.marginLeft = '8px';
-                            badge.style.padding = '2px 8px';
-                            badge.style.backgroundColor = '#46d369';
-                            badge.style.color = '#000';
-                            badge.style.borderRadius = '4px';
-                            badge.style.fontSize = '12px';
-                            badge.style.fontWeight = 'bold';
-                        }
-                    }
+                if (data.success && data.is_completed && !window.hasShownWatchedNotification) {
+                    window.hasShownWatchedNotification = true;
+                    showToast('✓ Automatically marked as watched');
+                    showWatchedBadge();
                 }
             })
             .catch(err => console.log('Failed to save progress:', err));
         }
 
-        function setupNetflixControls() {
-            const playPause = document.getElementById('playPauseButton');
-            const rewind = document.getElementById('rewindButton');
-            const forward = document.getElementById('forwardButton');
-            const mute = document.getElementById('muteButton');
-            const fullscreen = document.getElementById('fullscreenButton');
-            const sourceButton = document.getElementById('sourceControlButton');
-            const slider = document.getElementById('progressSlider');
-
-            playPause?.addEventListener('click', togglePlayback);
-            rewind?.addEventListener('click', () => seekTo(currentProgress - 10));
-            forward?.addEventListener('click', () => seekTo(currentProgress + 10));
-            mute?.addEventListener('click', () => {
-                isMuted = !isMuted;
-                mute.setAttribute('aria-label', isMuted ? 'Unmute' : 'Mute');
-                mute.style.opacity = isMuted ? '0.55' : '1';
-                sendPlayerCommand(isMuted ? 'mute' : 'unmute');
-            });
-            fullscreen?.addEventListener('click', async () => {
-                try {
-                    if (document.fullscreenElement) {
-                        await document.exitFullscreen();
-                    } else {
-                        await document.querySelector('.player-container').requestFullscreen();
-                    }
-                } catch (err) {
-                    console.warn('Fullscreen unavailable:', err);
-                }
-            });
-            sourceButton?.addEventListener('click', showSourceMenu);
-            slider?.addEventListener('input', () => seekTo(Number(slider.value)));
-
-            updatePlaybackProgress();
+        function showWatchedBadge() {
+            const badge = document.getElementById('watchedBadge');
+            if (badge) badge.hidden = false;
         }
-        
-        // Load saved progress on page load
+
         function loadSavedProgress() {
             // Progress is saved under the IMDB id (see saveProgress), so look it up the same way
             let url = `/api/watch_progress/${videoType === 'episode' ? 'series' : videoType}/${imdbId}`;
-            
-            // Add episode params for series
-            if (videoType === 'episode' && typeof season !== 'undefined' && typeof episode !== 'undefined') {
+            if (videoType === 'episode' && season !== null && episode !== null) {
                 url += `?season=${season}&episode=${episode}`;
             }
-            
+
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.progress && data.progress.progress_seconds > 0) {
-                        const savedProgress = data.progress;
-                        const progressPercent = savedProgress.progress_percent;
-                        
+                        const saved = data.progress;
                         // Only resume if not completed and progress is significant (>5% but <95%)
-                        if (!savedProgress.is_completed && progressPercent > 5 && progressPercent < 95) {
-                            const minutes = Math.floor(savedProgress.progress_seconds / 60);
-                            const seconds = savedProgress.progress_seconds % 60;
-                            const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
-                            
-                            showResumePrompt(savedProgress.progress_seconds, timeStr, progressPercent);
+                        if (!saved.is_completed && saved.progress_percent > 5 && saved.progress_percent < 95) {
+                            showResumePrompt(saved.progress_seconds, saved.progress_percent);
                         }
                     }
                 })
                 .catch(err => console.log('Failed to load progress:', err));
         }
-        
-        function showResumePrompt(progressSeconds, timeStr, progressPercent) {
+
+        function formatTime(seconds) {
+            seconds = Math.max(0, Math.floor(seconds));
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            return h > 0
+                ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+                : `${m}:${String(s).padStart(2, '0')}`;
+        }
+
+        function showResumePrompt(progressSeconds, progressPercent) {
             const prompt = document.createElement('div');
             prompt.className = 'resume-prompt';
             prompt.innerHTML = `
                 <div class="resume-content">
-                    <p>Resume from ${timeStr}? (${progressPercent.toFixed(0)}% watched)</p>
+                    <p>Resume from ${formatTime(progressSeconds)}? (${progressPercent.toFixed(0)}% watched)</p>
                     <div class="resume-buttons">
-                        <button onclick="resumePlayback(${progressSeconds})" class="btn-resume">Resume</button>
+                        <button onclick="resumePlayback(${Math.floor(progressSeconds)})" class="btn-resume">Resume</button>
                         <button onclick="dismissResumePrompt()" class="btn-start-over">Start Over</button>
                     </div>
                 </div>
             `;
             document.body.appendChild(prompt);
-            
             setTimeout(() => prompt.classList.add('show'), 100);
         }
-        
+
         window.resumePlayback = function(seconds) {
-            // Try to set the iframe's video position
-            // This works with some embed players that support URL parameters
-            const iframe = document.querySelector('iframe');
-            if (iframe && iframe.src) {
-                const url = new URL(iframe.src);
-                url.searchParams.set('t', seconds);
-                iframe.src = url.toString();
+            // Reload the current source at the saved position (startAt on the sources that support it)
+            currentProgress = seconds;
+            playbackStartTime = Date.now() - seconds * 1000;
+            if (currentSourceIndex >= 0) {
+                loadSource(currentSourceIndex, seconds);
+            } else {
+                pendingStartAt = seconds;  // applied once selectWorkingSource picks one
             }
-            seekTo(seconds);
-            setPlayState(true);
             dismissResumePrompt();
             showToast('Resuming playback...');
         };
-        
+
         window.dismissResumePrompt = function() {
             const prompt = document.querySelector('.resume-prompt');
             if (prompt) {
@@ -514,24 +437,19 @@
                 setTimeout(() => prompt.remove(), 300);
             }
         };
-        
-        // Load progress when page loads
-        window.addEventListener('load', loadSavedProgress);
-        
+
         function showToast(message) {
             const toast = document.createElement('div');
             toast.className = 'toast-notification';
             toast.textContent = message;
             document.body.appendChild(toast);
-            
             setTimeout(() => toast.classList.add('show'), 100);
             setTimeout(() => {
                 toast.classList.remove('show');
                 setTimeout(() => toast.remove(), 300);
             }, 2000);
         }
-        
-        // Mark as watched function
+
         window.markAsWatched = function() {
             const data = {
                 type: videoType === 'episode' ? 'series' : videoType,
@@ -539,150 +457,66 @@
                 tmdb_id: tmdbId,
                 title: seriesTitle
             };
-            
-            if (videoType === 'episode' && typeof season !== 'undefined' && typeof episode !== 'undefined') {
+            if (videoType === 'episode' && season !== null && episode !== null) {
                 data.season = season;
                 data.episode = episode;
             }
-            
             fetch('/api/mark_watched', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             })
             .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showToast('Marked as watched ✓');
-                }
-            })
+            .then(data => { if (data.success) showToast('Marked as watched ✓'); })
             .catch(err => console.log('Failed to mark as watched:', err));
         };
-        
-        // Handle keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'f' || e.key === 'F') {
-                if (document.fullscreenElement) {
-                    document.exitFullscreen();
-                } else {
-                    document.documentElement.requestFullscreen();
-                }
-            }
-            if (e.code === 'Space') {
-                e.preventDefault();
-                togglePlayback();
-            }
-            if (e.key === 'ArrowLeft') {
-                seekTo(currentProgress - 10);
-            }
-            if (e.key === 'ArrowRight') {
-                seekTo(currentProgress + 10);
-            }
-            if (e.key === 'm' || e.key === 'M') {
-                document.getElementById('muteButton')?.click();
-            }
-            if (e.key === 'Escape') {
-                showControls();
-                hideSourceMenu();
-            }
 
-        });
-        
-
-
-        // Check if item is already watched
         async function checkWatchedStatus() {
             try {
                 let url = `/api/watched_status/${videoType === 'episode' ? 'series' : videoType}/${imdbId}`;
-                
-                // Add episode params for series
-                if (videoType === 'episode' && typeof season !== 'undefined' && typeof episode !== 'undefined') {
+                if (videoType === 'episode' && season !== null && episode !== null) {
                     url += `?season=${season}&episode=${episode}`;
                 }
-                
                 const response = await fetch(url);
                 const data = await response.json();
-                
                 if (data.success && data.is_watched) {
-                    const badge = document.getElementById('watchedBadge');
-                    if (badge) {
-                        badge.style.display = 'inline';
-                        badge.style.marginLeft = '8px';
-                        badge.style.padding = '2px 8px';
-                        badge.style.backgroundColor = '#46d369';
-                        badge.style.color = '#000';
-                        badge.style.borderRadius = '4px';
-                        badge.style.fontSize = '12px';
-                        badge.style.fontWeight = 'bold';
-                    }
-                    window.hasAutoMarkedWatched = true; // Already watched, don't show notification again
+                    showWatchedBadge();
+                    window.hasShownWatchedNotification = true; // already watched, no toast
                 }
             } catch (err) {
                 console.log('Failed to check watched status:', err);
             }
         }
-        
-        // Start tracking when page loads
-        window.addEventListener('load', () => {
-            // Estimate video duration (for movies ~7200s, series ~2700s)
-            videoDuration = videoType === 'movie' ? 7200 : 2700;
-            setupNetflixControls();
-            
-            // Check if already watched
-            checkWatchedStatus();
-            
-            startProgressTracking();
-            
-            // Save initial view
-            setTimeout(() => saveProgress(), 5000);
-            
-            // Probe embed sources and set the iframe to the first one that allows framing
-            selectWorkingSource(embedSources).then(chosen => {
-                if (chosen) {
-                    const iframe = document.getElementById('videoIframe');
-                    iframe.src = prepareSourceUrl(chosen);
-                } else {
-                    // No working source found — show error message
-                    showError();
-                }
-            }).catch(err => {
-                console.error('Error selecting embed source', err);
-                showError();
-            });
 
-            // Auto-hide loading after 10 seconds if iframe hasn't signaled load
-            setTimeout(() => {
-                hideLoading();
-            }, 10000);
+        // ---- Fullscreen and keyboard --------------------------------------------
+        async function toggleFullscreen() {
+            try {
+                if (document.fullscreenElement) {
+                    await document.exitFullscreen();
+                } else {
+                    await document.getElementById('playerContainer').requestFullscreen();
+                }
+            } catch (err) {
+                console.warn('Fullscreen unavailable:', err);
+            }
+        }
+
+        document.addEventListener('fullscreenchange', () => {
+            const button = document.getElementById('fullscreenButton');
+            if (button) button.setAttribute('aria-label', document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen');
         });
 
-        // Try each source sequentially by asking the server whether the URL allows framing.
-        // Returns a promise that resolves to the first URL that allows framing or null.
-        async function selectWorkingSource(sources) {
-            if (!sources || !sources.length) return null;
-            for (let i = 0; i < sources.length; i++) {
-                const src = sources[i];
-                try {
-                    showLoading(i + 1);
-                    const resp = await fetch('/embed_check', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ url: src })
-                    });
-                    const json = await resp.json();
-                    if (json.allows) {
-                        currentSourceIndex = i;
-                        hideSourceMenu();
-                        return src;
-                    }
-                } catch (e) {
-                    console.warn('Embed check failed for', src, e);
-                }
+        // Space, arrows and M belong to the source's player once it has focus;
+        // this page can only handle fullscreen and the menu.
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+            if (e.key === 'Escape') {
+                showControls();
+                hideSourceMenu();
             }
-            return null;
-        }
-        
-        // Functions for handling video loading states
+        });
+
+        // ---- Loading states -----------------------------------------------------
         function hideLoading() {
             const loader = document.getElementById('loadingIndicator');
             if (loader) {
@@ -690,19 +524,19 @@
                 setTimeout(() => loader.style.display = 'none', 300);
             }
         }
-        
+
         function showError() {
             const loader = document.getElementById('loadingIndicator');
             const error = document.getElementById('errorMessage');
             if (loader) loader.style.display = 'none';
             if (error) error.style.display = 'flex';
         }
-        
+
         function hideError() {
             const error = document.getElementById('errorMessage');
             if (error) error.style.display = 'none';
         }
-        
+
         function showLoading(sourceNum) {
             const loader = document.getElementById('loadingIndicator');
             const loadingSource = document.getElementById('loadingSource');
@@ -711,49 +545,77 @@
                 loader.style.display = 'flex';
                 loader.style.opacity = '1';
             }
-            if (loadingSource) {
-                loadingSource.textContent = `Trying source ${sourceNum}...`;
-            }
+            if (loadingSource) loadingSource.textContent = `Trying source ${sourceNum}...`;
         }
-        
-        // Save progress before leaving
-        window.addEventListener('beforeunload', saveProgress);
-        
-        // Source switching functionality
+
+        // Try each source in order, asking the server whether it allows framing.
+        async function selectWorkingSource(sources) {
+            for (let i = 0; i < sources.length; i++) {
+                try {
+                    showLoading(i + 1);
+                    const resp = await fetch('/embed_check', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url: sources[i] })
+                    });
+                    const json = await resp.json();
+                    if (json.allows) return i;
+                } catch (e) {
+                    console.warn('Embed check failed for', sources[i], e);
+                }
+            }
+            return -1;
+        }
+
+        // ---- Source menu --------------------------------------------------------
         function showSourceMenu() {
             const menu = document.getElementById('sourceMenu');
             menu.style.display = 'flex';
             setTimeout(() => menu.classList.add('show'), 10);
+            showControls();
         }
-        
+
         function hideSourceMenu() {
             const menu = document.getElementById('sourceMenu');
             menu.classList.remove('show');
             setTimeout(() => menu.style.display = 'none', 300);
         }
-        
-        function switchSource(sourceUrl, button) {
-            // Update active button
-            document.querySelectorAll('.source-option').forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            
-            // Get source number
-            const sourceNum = button.textContent.match(/\d+/)[0];
-            showLoading(sourceNum);
-            
-            // Switch iframe source
-            const iframe = document.getElementById('videoIframe');
-            iframe.src = prepareSourceUrl(sourceUrl);
-            
-            // Show notification
+
+        function switchSource(index) {
+            showLoading(index + 1);
+            // Keep the viewer's place when the new source supports startAt
+            const startAt = hasRealPlayerEvents ? currentProgress : pendingStartAt;
+            loadSource(index, startAt);
             showToast('Switching video source...');
-            
-            // Hide menu after short delay
             setTimeout(hideSourceMenu, 500);
-            
-            // Auto-hide loading after timeout
-            setTimeout(() => hideLoading(), 8000);
+            setTimeout(hideLoading, 8000);
         }
+
+        // ---- Start --------------------------------------------------------------
+        document.getElementById('fullscreenButton').addEventListener('click', toggleFullscreen);
+        window.addEventListener('beforeunload', saveProgress);
+
+        window.addEventListener('load', () => {
+            showControls();
+            checkWatchedStatus();
+            loadSavedProgress();
+            startFallbackTracking();
+            setTimeout(saveProgress, 5000);  // record the view
+
+            selectWorkingSource(embedSources).then(index => {
+                if (index >= 0) {
+                    loadSource(index, pendingStartAt);
+                } else {
+                    showError();
+                }
+            }).catch(err => {
+                console.error('Error selecting embed source', err);
+                showError();
+            });
+
+            // Hide the loader after 10 seconds if the iframe never signals load
+            setTimeout(hideLoading, 10000);
+        });
     </script>
 </body>
 </html>
