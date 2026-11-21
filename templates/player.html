@@ -108,6 +108,16 @@
                     </button>
                 </div>
 
+                <button class="source-report" id="reportSourceButton" type="button" onclick="reportSourceBroken()" hidden>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 18l8.5-6L6 6v12zm10-12v12h2V6h-2z" fill="currentColor"/>
+                    </svg>
+                    <span class="source-report-text">
+                        <strong id="reportSourceTitle">Source 1 not working?</strong>
+                        <span>Mark it and try the next source</span>
+                    </span>
+                </button>
+
                 <ul class="source-list" role="listbox" aria-labelledby="sourceMenuTitle">
                     {% for source in embed_sources or [] %}
                     <li>
@@ -140,7 +150,7 @@
                     </summary>
                     <ul class="source-help-tips">
                         <li>Give it a few seconds to buffer.</li>
-                        <li>Try the next source marked Online.</li>
+                        <li>Press "not working?" above to skip to the next source.</li>
                         <li>Pause your ad blocker for this page.</li>
                         <li>Refresh the page or check your connection.</li>
                     </ul>
@@ -250,6 +260,7 @@
             });
             const label = document.getElementById('currentSourceLabel');
             if (label) label.textContent = `Source ${index + 1}`;
+            updateReportButton();
         }
 
         // ---- Auto-hiding top bar -------------------------------------------------
@@ -306,6 +317,13 @@
             hasRealPlayerEvents = true;
             if (Number.isFinite(time) && time >= 0) currentProgress = time;
             if (Number.isFinite(duration) && duration > 0) videoDuration = duration;
+
+            // The video's clock is running, so this source really plays this title
+            if (data.event === 'timeupdate' && time > 1 && currentSourceIndex >= 0
+                && viewerVerdict(currentSourceIndex) !== 'works'
+                && hostBrand(new URL(event.origin).hostname.toLowerCase()) === hostBrand(sourceHost(currentSourceIndex))) {
+                recordVerdict(currentSourceIndex, 'works');
+            }
 
             switch (data.event) {
                 case 'play':
@@ -615,8 +633,37 @@
         }
 
         // ---- Source status ------------------------------------------------------
-        const STATUS_TEXT = { checking: 'Checking…', online: 'Online', unavailable: 'Unavailable', unknown: '' };
-        const sourceChecks = new Map();  // index -> Promise<boolean>, so each source is checked once
+        // The server can only tell whether a site refuses to be framed. It cannot tell
+        // whether the site has this video: vixsrc and vidsrc.su answer 200 even for a
+        // title they don't have. So "Worked" and "Not working" come from this browser
+        // (real playback events, and the viewer's own report), remembered per title.
+        const STATUS_TEXT = {
+            checking: 'Checking…', works: 'Worked', broken: 'Not working',
+            blocked: "Can't embed", unknown: ''
+        };
+        const sourceChecks = new Map();  // index -> Promise<boolean usable>, one check per source
+        const blockedSources = new Set();
+        const historyKey = `homeflix:sources:${imdbId}:${season ?? 0}:${episode ?? 0}`;
+
+        function sourceHost(index) {
+            try { return new URL(embedSources[index]).hostname.toLowerCase(); } catch (e) { return String(index); }
+        }
+
+        function readHistory() {
+            try { return JSON.parse(localStorage.getItem(historyKey)) || {}; } catch (e) { return {}; }
+        }
+
+        // 'works' | 'broken' | null, for this title
+        function viewerVerdict(index) {
+            return readHistory()[sourceHost(index)] || null;
+        }
+
+        function recordVerdict(index, verdict) {
+            const history = readHistory();
+            history[sourceHost(index)] = verdict;
+            try { localStorage.setItem(historyKey, JSON.stringify(history)); } catch (e) { /* private mode */ }
+            refreshSourceStatus(index);
+        }
 
         function setSourceStatus(index, status) {
             const el = document.querySelector(`.source-option[data-index="${index}"] .source-status`);
@@ -625,42 +672,85 @@
             el.querySelector('.status-text').textContent = STATUS_TEXT[status] || '';
         }
 
-        // Ask the server whether the source allows being shown in a frame
+        function refreshSourceStatus(index, checking = false) {
+            setSourceStatus(index, viewerVerdict(index)
+                || (blockedSources.has(index) ? 'blocked' : checking ? 'checking' : 'unknown'));
+        }
+
+        // Ask the server whether the source refuses being shown in a frame.
+        // Only an explicit refusal rules a source out: an error or timeout says more
+        // about the server's network than about the source, so it is still tried.
         function checkSource(index) {
             if (!sourceChecks.has(index)) {
-                setSourceStatus(index, 'checking');
+                refreshSourceStatus(index, true);
                 const check = fetch('/embed_check', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url: embedSources[index] })
                 })
-                    .then(resp => resp.json())
-                    .then(json => Boolean(json.allows))
+                    .then(resp => (resp.ok ? resp.json() : null))
+                    .then(json => {
+                        if (json && json.allows === false) blockedSources.add(index);
+                        return !blockedSources.has(index);
+                    })
                     .catch(e => {
                         console.warn('Embed check failed for', embedSources[index], e);
-                        return false;
+                        return true;
                     })
-                    .then(allows => {
-                        setSourceStatus(index, allows ? 'online' : 'unavailable');
-                        return allows;
+                    .then(usable => {
+                        refreshSourceStatus(index);
+                        return usable;
                     });
                 sourceChecks.set(index, check);
             }
             return sourceChecks.get(index);
         }
 
-        // Try each source in order and return the first one that can be framed.
-        // When resuming, sources that can open at a given second go first.
-        async function selectWorkingSource(sources) {
-            let order = sources.map((_, i) => i);
-            if (resumeFromUrl > 0) {
-                order = [...order.filter(supportsStartAt), ...order.filter(i => !supportsStartAt(i))];
-            }
-            for (const i of order) {
+        // Order to try sources in: ones that worked here first, ones the viewer marked
+        // as not working last; when resuming, ones that can open at a given second first.
+        function sourceTryOrder() {
+            const rank = (i) => {
+                const verdict = viewerVerdict(i);
+                if (verdict === 'broken') return 10;
+                return (verdict === 'works' ? 0 : 2) + (resumeFromUrl > 0 && !supportsStartAt(i) ? 1 : 0);
+            };
+            return embedSources.map((_, i) => i).sort((a, b) => rank(a) - rank(b) || a - b);
+        }
+
+        // Return the first source in try order that isn't refused by the site
+        async function selectWorkingSource() {
+            for (const i of sourceTryOrder()) {
                 showLoading(i + 1);
                 if (await checkSource(i)) return i;
             }
             return -1;
+        }
+
+        // "Not working, try next": remember it for this title and move on
+        window.reportSourceBroken = async function() {
+            if (currentSourceIndex < 0) return;
+            const broken = currentSourceIndex;
+            recordVerdict(broken, 'broken');
+            const order = sourceTryOrder();
+            // The sources after this one in try order, then the ones before it
+            const start = order.indexOf(broken);
+            const candidates = [...order.slice(start + 1), ...order.slice(0, start)]
+                .filter(i => viewerVerdict(i) !== 'broken');
+            for (const i of candidates) {
+                if (await checkSource(i)) {
+                    switchSource(i);
+                    return;
+                }
+            }
+            showToast('No other source left to try');
+        };
+
+        function updateReportButton() {
+            const button = document.getElementById('reportSourceButton');
+            if (!button) return;
+            button.hidden = currentSourceIndex < 0;
+            const label = document.getElementById('reportSourceTitle');
+            if (label) label.textContent = `Source ${currentSourceIndex + 1} not working?`;
         }
 
         // Tag the sources whose own player we theme like Netflix (see prepareSourceUrl)
@@ -745,7 +835,8 @@
             startFallbackTracking();
             setTimeout(saveProgress, 5000);  // record the view (skipped until the start is known)
 
-            selectWorkingSource(embedSources).then(index => {
+            embedSources.forEach((_, index) => refreshSourceStatus(index));
+            selectWorkingSource().then(index => {
                 if (index < 0) {
                     showError();
                 } else if (pendingStartAt > 0) {

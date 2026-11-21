@@ -867,20 +867,78 @@ textarea {
     animation: status-blink 1s ease-in-out infinite;
 }
 
-.source-status[data-status="online"] {
+/* Worked: real playback events seen in this browser */
+.source-status[data-status="works"] {
     color: #46d369;
 }
 
-.source-status[data-status="online"] .status-dot {
+.source-status[data-status="works"] .status-dot {
     background: #46d369;
 }
 
-.source-status[data-status="unavailable"] .status-dot {
+/* Not working (viewer's report) / Can't embed (site refuses frames) */
+.source-status[data-status="broken"],
+.source-status[data-status="blocked"] {
+    color: #e87c03;
+}
+
+.source-status[data-status="broken"] .status-dot,
+.source-status[data-status="blocked"] .status-dot {
     background: #e50914;
 }
 
-.source-option:has(.source-status[data-status="unavailable"]):not(.active) .source-name {
-    opacity: 0.55;
+.source-option:has(.source-status[data-status="broken"]):not(.active) .source-name,
+.source-option:has(.source-status[data-status="blocked"]):not(.active) .source-name {
+    opacity: 0.5;
+}
+
+/* "Source N not working?" */
+.source-report {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 0 16px 8px;
+    padding: 12px 16px;
+    border: 0;
+    border-radius: 4px;
+    background: #2a2a2a;
+    color: #ffffff;
+    font-family: inherit;
+    text-align: left;
+    flex-shrink: 0;
+    transition: background-color 0.15s ease;
+}
+
+.source-report[hidden] {
+    display: none;
+}
+
+.source-report:hover,
+.source-report:focus-visible {
+    background: #383838;
+    outline: none;
+}
+
+.source-report svg {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.source-report-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.source-report-text strong {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.source-report-text span {
+    font-size: 12px;
+    color: #a3a3a3;
 }
 
 @keyframes status-blink {
