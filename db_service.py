@@ -341,7 +341,7 @@ class DatabaseService:
                 .all()
             return [movie.to_dict() for movie in movies]
 
-    def get_top_rated(self, kind: str, limit: int = 250) -> List[Dict[str, Any]]:
+    def get_top_rated(self, kind: str, limit: int = 500) -> List[Dict[str, Any]]:
         """
         Rank titles with IMDb's Top 250 formula (a weighted rating), using TMDB votes
 

@@ -43,7 +43,7 @@ app.config.update(
 )
 
 # The sign-in and sign-up pages need their stylesheets before anyone is signed in
-_PUBLIC_PATHS = ('/login', '/signup', '/css/', '/favicon.ico')
+_PUBLIC_PATHS = ('/login', '/signup', '/css/', '/static/', '/favicon.ico')
 _USERNAME_PATTERN = re.compile(r'^[A-Za-z0-9_.-]{3,30}$')
 _MIN_PASSWORD_LENGTH = 8
 _LOGIN_MAX_FAILURES = 10
@@ -513,15 +513,16 @@ def search():
 @app.route('/top')
 @measure_time
 def top_rated():
-    """Top 250 movies (or TV shows with ?type=tv), ranked with IMDb's weighted-rating formula"""
+    """Top movies or TV shows ranked with IMDb's weighted-rating formula"""
     kind = 'series' if request.args.get('type') == 'tv' else 'movie'
     try:
         # Ratings only change when sync_data.py runs, so an hour-old ranking is fine
-        titles = cache_manager.get('top', kind, cache_config.TMDB_DATA)
+        cache_key = f"{kind}-{pagination_config.TOP_LIST_SIZE}"
+        titles = cache_manager.get('top', cache_key, cache_config.TMDB_DATA)
         if titles is None:
             with _user_db() as db_service:
                 titles = db_service.get_top_rated(kind, limit=pagination_config.TOP_LIST_SIZE)
-            cache_manager.set('top', kind, titles)
+            cache_manager.set('top', cache_key, titles)
         return render_template('top.html', titles=titles, kind=kind,
                                list_size=pagination_config.TOP_LIST_SIZE)
     except Exception as e:

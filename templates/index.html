@@ -7,6 +7,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>HOME FLIX</title>
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/css/index.css?v={{ asset_version }}">
     <link rel="stylesheet" href="/css/modal.css?v={{ asset_version }}">
     <link rel="stylesheet" href="/css/title-info.css?v={{ asset_version }}">
@@ -35,7 +36,7 @@
                 <a href="javascript:void(0)" class="nav-link" onclick="filterByType('tv')">TV Shows</a>
                 <a href="javascript:void(0)" class="nav-link" onclick="filterByType('movie')">Movies</a>
                 <a href="javascript:void(0)" class="nav-link" onclick="showNewPopular()">New & Popular</a>
-                <a href="/top" class="nav-link">Top 250</a>
+                <a href="/top" class="nav-link">Top 500</a>
                 <a href="javascript:void(0)" class="nav-link" onclick="showMyList()">My List</a>
             </nav>
         </div>
@@ -67,7 +68,7 @@
         <a href="javascript:void(0)" class="nav-link" onclick="filterByType('tv'); toggleMobileMenu();">TV Shows</a>
         <a href="javascript:void(0)" class="nav-link" onclick="filterByType('movie'); toggleMobileMenu();">Movies</a>
         <a href="javascript:void(0)" class="nav-link" onclick="showNewPopular(); toggleMobileMenu();">New & Popular</a>
-        <a href="/top" class="nav-link">Top 250</a>
+        <a href="/top" class="nav-link">Top 500</a>
         <a href="javascript:void(0)" class="nav-link" onclick="showMyList(); toggleMobileMenu();">My List</a>
     </nav>
 
@@ -182,7 +183,13 @@
             <div class="row-slider">
                 <div class="slider-container" id="continue-watching-slider">
                     {% for item in continue_watching %}
-                    <div class="title-card" data-title="{{ item.title }}" data-type="{{ item.type }}" data-id="{{ item.id }}" data-tmdb-id="{{ item.tmdb_id }}" data-genres="{{ item.genres|join(',') if item.genres else '' }}">
+                    {# Clicking goes straight to the player, at the second the viewer stopped #}
+                    {% if item.type == 'series' and item.season and item.episode %}
+                    {% set resume_url = '/watch/series/' ~ item.id ~ '/' ~ item.season ~ '/' ~ item.episode %}
+                    {% else %}
+                    {% set resume_url = '/watch/' ~ item.type ~ '/' ~ item.id %}
+                    {% endif %}
+                    <div class="title-card" data-title="{{ item.title }}" data-type="{{ item.type }}" data-id="{{ item.id }}" data-tmdb-id="{{ item.tmdb_id }}" data-genres="{{ item.genres|join(',') if item.genres else '' }}" data-resume-url="{{ resume_url }}?t={{ item.progress|int }}">
                         <div class="title-card-image">
                             <span class="continue-watching-badge">Continue Watching</span>
                             <button class="remove-from-continue-watching" onclick="removeFromContinueWatching('{{ item.id }}', '{{ item.type }}', this)" title="Remove from Continue Watching">

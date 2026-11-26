@@ -7,6 +7,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>{{ title }} - HOME FLIX</title>
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/css/player.css?v={{ asset_version }}">
     <link rel="stylesheet" href="/css/watch-mark.css?v={{ asset_version }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="player-container">
+    <div class="player-container" id="playerContainer">
         <div class="video-wrapper">
             <!-- Loading Indicator -->
             <div class="loading-indicator" id="loadingIndicator">
@@ -22,7 +23,7 @@
                 <p>Loading video...</p>
                 <p class="loading-source" id="loadingSource">Trying source 1...</p>
             </div>
-            
+
             <!-- Error Message -->
             <div class="error-message" id="errorMessage" style="display: none;">
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -32,12 +33,12 @@
                 <p>The video source is currently unavailable. Please try a different source.</p>
                 <button class="retry-button" onclick="showSourceMenu()">Try Different Source</button>
             </div>
-            
-        <iframe id="videoIframe"
-            src="about:blank" 
-                    width="100%" 
-                    height="100%" 
-                    frameborder="0" 
+
+            <iframe id="videoIframe"
+                    src="about:blank"
+                    width="100%"
+                    height="100%"
+                    frameborder="0"
                     allowfullscreen
                     webkitallowfullscreen
                     mozallowfullscreen
@@ -45,178 +46,325 @@
                     referrerpolicy="origin"
                     onload="typeof hideLoading === 'function' && hideLoading()"
                     onerror="typeof showError === 'function' && showError()"></iframe>
-            
+
+            <!-- Netflix-style top bar, the same over every source.
+                 Playback controls stay inside each source's own player: none of the
+                 providers accepts play/pause/seek commands from this page. -->
             <div class="player-controls" id="topControls">
                 <div class="top-bar">
                     {% if type == 'episode' and season is defined %}
-                    <a href="/series/{{ imdb_id }}/season/{{ season }}" class="back-button">
-                        ← Back
-                    </a>
+                    {% set back_href = '/series/' ~ imdb_id ~ '/season/' ~ season %}
                     {% elif type == 'movie' %}
-                    <a href="/movie/{{ imdb_id }}" class="back-button">
-                        ← Back
-                    </a>
+                    {% set back_href = '/movie/' ~ imdb_id %}
                     {% else %}
-                    <a href="javascript:history.back()" class="back-button">
-                        ← Back
-                    </a>
+                    {% set back_href = 'javascript:history.back()' %}
                     {% endif %}
-                    
-                    <div class="episode-info">
-                        <h2 class="episode-title">{{ title }}</h2>
-                        <p class="series-info">{{ type|title }} <span id="watchedBadge" class="watched-badge" style="display: none;">✓ Watched</span></p>
-                    </div>
-                    
-                    <!-- Source Switcher Button -->
-                    <button class="source-switcher-btn" id="sourceSwitch" onclick="showSourceMenu()">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="currentColor"/>
+                    <a href="{{ back_href }}" class="back-button" aria-label="Back">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor"/>
                         </svg>
-                        Change Source
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Source Selector Menu -->
-            <div class="source-menu" id="sourceMenu" style="display: none;">
-                <div class="source-menu-header">
-                    <h3>Select Video Source</h3>
-                    <button class="close-menu-btn" onclick="hideSourceMenu()">✕</button>
-                </div>
-                <p class="source-info-top">If the video doesn't play, try switching to a different source. Each source may have different availability.</p>
-                <div class="source-list">
-                    {% if embed_sources %}
-                        {% for source in embed_sources %}
-                        <button class="source-option {% if loop.index == 1 %}active{% endif %}" 
-                                data-source="{{ source }}" 
-                                onclick="switchSource('{{ source }}', this)">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-                            </svg>
-                            <span class="source-info-text">
-                                <span class="source-name">Source {{ loop.index }}</span>
-                                <span class="source-domain">{{ source.split('/')[2] }}</span>
-                            </span>
-                            <span class="source-status" id="status-{{ loop.index }}">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="12" cy="12" r="10" fill="currentColor"/>
-                                </svg>
-                            </span>
-                        </button>
-                        {% endfor %}
-                    {% endif %}
-                </div>
-                <div class="troubleshooting-tips">
-                    <p class="tip-title">💡 Troubleshooting Tips:</p>
-                    <ul>
-                        <li>Wait a few seconds for the video to buffer</li>
-                        <li>Try a different source if one doesn't work</li>
-                        <li>Check your internet connection</li>
-                        <li>Disable ad-blockers if video won't load</li>
-                        <li>Try refreshing the page</li>
-                    </ul>
-                </div>
-                <div class="direct-links">
-                    <p class="tip-title">🔗 Still not working? Try these direct links:</p>
-                    <div class="direct-link-buttons">
-                        {% if tmdb_id %}
-                        {# These two also play when opened on their own; most other sources only play inside a frame #}
-                        {% set episode_path = '' if type == 'movie' else '/' ~ (season or 1) ~ '/' ~ (episode or 1) %}
-                        <a href="https://vidlink.pro/{{ 'movie' if type == 'movie' else 'tv' }}/{{ tmdb_id }}{{ episode_path }}"
-                           target="_blank" rel="noopener noreferrer"
-                           class="direct-link-btn">
-                            Open VidLink
-                        </a>
-                        <a href="https://vidrock.net/{{ 'movie' if type == 'movie' else 'tv' }}/{{ tmdb_id }}{{ episode_path }}"
-                           target="_blank" rel="noopener noreferrer"
-                           class="direct-link-btn">
-                            Open VidRock
-                        </a>
+                    </a>
+
+                    <div class="episode-info">
+                        {% if type == 'episode' and series_title %}
+                        <h2 class="episode-title">{{ series_title }}</h2>
+                        <p class="series-info">Season {{ season }} · Episode {{ episode }}
+                            <span id="watchedBadge" class="player-watched-badge" hidden>✓ Watched</span></p>
+                        {% else %}
+                        <h2 class="episode-title">{{ title }}</h2>
+                        <p class="series-info">{{ 'Movie' if type == 'movie' else 'Series' }}
+                            <span id="watchedBadge" class="player-watched-badge" hidden>✓ Watched</span></p>
                         {% endif %}
                     </div>
+
+                    <div class="top-actions">
+                        <button class="top-icon-button source-switcher-btn" id="sourceSwitch" type="button" onclick="showSourceMenu()" aria-label="Change source">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4zm14-1v6l5-3z" fill="currentColor"/>
+                            </svg>
+                            <span class="top-button-label" id="currentSourceLabel">Source 1</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
+            <!-- Source Selector Menu -->
+            <div class="source-backdrop" id="sourceBackdrop" onclick="hideSourceMenu()" hidden></div>
+            <div class="source-menu" id="sourceMenu" role="dialog" aria-modal="true" aria-labelledby="sourceMenuTitle" hidden>
+                <div class="source-menu-header">
+                    <div>
+                        <h3 id="sourceMenuTitle">Video source</h3>
+                        <p class="source-menu-subtitle">Pick another server if the video won't start or keeps buffering.</p>
+                    </div>
+                    <button class="close-menu-btn" type="button" onclick="hideSourceMenu()" aria-label="Close">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
+                        </svg>
+                    </button>
+                </div>
 
+                <button class="source-report" id="reportSourceButton" type="button" onclick="reportSourceBroken()" hidden>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 18l8.5-6L6 6v12zm10-12v12h2V6h-2z" fill="currentColor"/>
+                    </svg>
+                    <span class="source-report-text">
+                        <strong id="reportSourceTitle">Source 1 not working?</strong>
+                        <span>Mark it and try the next source</span>
+                    </span>
+                </button>
+
+                <ul class="source-list" role="listbox" aria-labelledby="sourceMenuTitle">
+                    {% for source in embed_sources or [] %}
+                    <li>
+                        <button class="source-option" type="button" role="option" aria-selected="false"
+                                data-index="{{ loop.index0 }}" onclick="switchSource({{ loop.index0 }})">
+                            <span class="source-check" aria-hidden="true">
+                                <svg viewBox="0 0 24 24"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg>
+                            </span>
+                            <span class="source-info-text">
+                                <span class="source-name">
+                                    Source {{ loop.index }}
+                                    <span class="source-tag source-tag-playing">Playing</span>
+                                    <span class="source-tag source-tag-themed" hidden>Netflix style</span>
+                                </span>
+                                <span class="source-domain">{{ source.split('/')[2] }}</span>
+                            </span>
+                            <span class="source-status" data-status="unknown">
+                                <span class="status-dot"></span>
+                                <span class="status-text"></span>
+                            </span>
+                        </button>
+                    </li>
+                    {% endfor %}
+                </ul>
+
+                <details class="source-help">
+                    <summary>
+                        <span>Video not playing?</span>
+                        <svg class="source-help-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z" fill="currentColor"/></svg>
+                    </summary>
+                    <ul class="source-help-tips">
+                        <li>Give it a few seconds to buffer.</li>
+                        <li>Press "not working?" above to skip to the next source.</li>
+                        <li>Pause your ad blocker for this page.</li>
+                        <li>Refresh the page or check your connection.</li>
+                    </ul>
+                    {% if tmdb_id %}
+                    {# These two also play when opened on their own; most other sources only play inside a frame #}
+                    {% set episode_path = '' if type == 'movie' else '/' ~ (season or 1) ~ '/' ~ (episode or 1) %}
+                    <p class="source-help-label">Open in a new tab</p>
+                    <div class="direct-link-buttons">
+                        <a href="https://vidlink.pro/{{ 'movie' if type == 'movie' else 'tv' }}/{{ tmdb_id }}{{ episode_path }}"
+                           target="_blank" rel="noopener noreferrer" class="direct-link-btn">VidLink ↗</a>
+                        <a href="https://vidrock.net/{{ 'movie' if type == 'movie' else 'tv' }}/{{ tmdb_id }}{{ episode_path }}"
+                           target="_blank" rel="noopener noreferrer" class="direct-link-btn">VidRock ↗</a>
+                    </div>
+                    {% endif %}
+                </details>
+            </div>
         </div>
     </div>
 
     <script>
-        let controlsVisible = true;
-        let controlsTimeout;
+        const videoType = {{ type|tojson }};
+        const videoTitle = {{ title|tojson }};
+        const imdbId = {{ imdb_id|tojson }};
+        const tmdbId = {{ (tmdb_id or '')|tojson }};
+        const season = {% if season is defined and season is not none %}{{ season|int }}{% else %}null{% endif %};
+        const episode = {% if episode is defined and episode is not none %}{{ episode|int }}{% else %}null{% endif %};
+        const seriesTitle = {{ (series_title or title)|tojson }};
+        const embedSources = {{ (embed_sources or [])|tojson }};
+
+        // Hosts allowed to send us player events: the hosts of our own sources
+        const sourceHosts = embedSources
+            .map(src => { try { return new URL(src).hostname.toLowerCase(); } catch (e) { return null; } })
+            .filter(Boolean);
+
+        const NETFLIX_RED = 'E50914';
+        const NETFLIX_TRACK = '5A5A5A';
+
+        let currentSourceIndex = -1;  // -1 until a working source is chosen
+        let pendingStartAt = 0;       // resume position chosen before a source was ready
+        let currentProgress = 0;   // seconds
+        let videoDuration = 0;     // seconds; 0 until a source reports it
+        let hasRealPlayerEvents = false;
+        let isPaused = false;
+        let lastSavedAt = 0;
         let playbackStartTime = Date.now();
-        let currentProgress = 0;
-        let videoDuration = 0;
-        
-        const videoType = "{{ type }}";
-        const videoTitle = "{{ title }}";
-        const imdbId = "{{ imdb_id }}";
-        const tmdbId = "{{ tmdb_id }}";
-        const season = {% if season is defined %}{{ season }}{% else %}null{% endif %};
-        const episode = {% if episode is defined %}{{ episode }}{% else %}null{% endif %};
-        const currentSeason = {% if season %}{{ season }}{% else %}null{% endif %};
-        const currentEpisode = {% if episode %}{{ episode }}{% else %}null{% endif %};
-        const seriesTitle = "{{ series_title if series_title else title }}";
-        let currentSourceIndex = 0;
-        let nextEpisodeData = null;
-        // List of embed sources rendered from server
-        const embedSources = [
-            {% if embed_sources %}
-                {% for s in embed_sources %}
-                    "{{ s }}"{{ "," if not loop.last }}
-                {% endfor %}
-            {% endif %}
-        ];
-        
-        // Show/hide controls on mouse movement
-        document.addEventListener('mousemove', showControls);
-        document.addEventListener('click', showControls);
-        
-        function showControls() {
-            const controls = document.getElementById('topControls');
-            controls.style.opacity = '1';
-            controlsVisible = true;
-            
-            clearTimeout(controlsTimeout);
-            controlsTimeout = setTimeout(() => {
-                controls.style.opacity = '0';
-                controlsVisible = false;
-            }, 3000);
+        let controlsTimeout;
+
+        // ?t=<seconds> comes from a Continue Watching card: resume there without asking
+        const resumeFromUrl = Math.max(0, parseInt(new URLSearchParams(location.search).get('t'), 10) || 0);
+        let progressReady = false;  // false until the starting position is known
+        let resumeFloor = 0;        // resume point, see saveProgress
+        let resumeFloorUntil = 0;
+        let resumePromptTimer;
+
+        // Theme each source's own player like Netflix, using only the parameters
+        // the provider supports. Unknown hosts are left untouched, because some
+        // (2embed, multiembed) put the episode in a hand-built query string.
+        function prepareSourceUrl(sourceUrl, startAt) {
+            let url;
+            try {
+                url = new URL(sourceUrl);
+            } catch (error) {
+                return sourceUrl;
+            }
+            const host = url.hostname.toLowerCase();
+            const params = url.searchParams;
+            const start = Math.floor(startAt || 0);
+
+            if (host.includes('vidlink')) {
+                // Documented on vidlink.pro
+                params.set('primaryColor', NETFLIX_RED);
+                params.set('secondaryColor', NETFLIX_TRACK);
+                params.set('iconColor', 'FFFFFF');
+                params.set('icons', 'vid');
+                params.set('title', 'false');   // the top bar already shows it
+                params.set('poster', 'true');
+                params.set('autoplay', 'true');
+                if (videoType === 'episode') params.set('nextbutton', 'true');
+                if (start > 0) params.set('startAt', start);
+            } else if (host.includes('vixsrc')) {
+                // Documented on vixsrc.to
+                params.set('primaryColor', NETFLIX_RED);
+                params.set('secondaryColor', NETFLIX_TRACK);
+                params.set('autoplay', 'true');
+                if (start > 0) params.set('startAt', start);
+            } else if (host.includes('vidfast')) {
+                // vidfast's docs page could not be read; theme and startAt are its
+                // usual names and are ignored if unsupported
+                params.set('theme', NETFLIX_RED);
+                if (start > 0) params.set('startAt', start);
+            } else {
+                return sourceUrl;
+            }
+            return url.toString();
         }
-        
-        // Hide controls when not moving mouse
-        document.addEventListener('mouseleave', function() {
-            const controls = document.getElementById('topControls');
-            controls.style.opacity = '0';
-            controlsVisible = false;
+
+        function loadSource(index, startAt) {
+            const src = embedSources[index];
+            if (!src) return;
+            currentSourceIndex = index;
+            hasRealPlayerEvents = false;
+            document.getElementById('videoIframe').src = prepareSourceUrl(src, startAt);
+            document.querySelectorAll('.source-option').forEach(btn => {
+                const isCurrent = Number(btn.dataset.index) === index;
+                btn.classList.toggle('active', isCurrent);
+                btn.setAttribute('aria-selected', String(isCurrent));
+            });
+            const label = document.getElementById('currentSourceLabel');
+            if (label) label.textContent = `Source ${index + 1}`;
+            updateReportButton();
+        }
+
+        // ---- Auto-hiding top bar -------------------------------------------------
+        // The iframe swallows mouse events, so the bar also reveals itself when the
+        // pointer reaches it, when the page regains focus, or when the video pauses.
+        function showControls() {
+            const container = document.getElementById('playerContainer');
+            container.classList.remove('controls-hidden');
+            clearTimeout(controlsTimeout);
+            controlsTimeout = setTimeout(hideControls, 3000);
+        }
+
+        function hideControls() {
+            if (isPaused || document.getElementById('sourceMenu').classList.contains('show')) return;
+            document.getElementById('playerContainer').classList.add('controls-hidden');
+        }
+
+        document.addEventListener('mousemove', showControls);
+        document.addEventListener('touchstart', showControls, { passive: true });
+        document.addEventListener('mouseleave', hideControls);
+        // Clicking into the source's player moves focus into the iframe
+        window.addEventListener('blur', showControls);
+
+        // ---- Events from the source's player ------------------------------------
+        // VidLink, VixSrc and VidFast post { type: 'PLAYER_EVENT', data: { event,
+        // currentTime, duration } }. Only accept them from our own source hosts.
+        // Compare by brand ("vidfast" in vidfast.pro), since providers move between
+        // domains: vidfast.pro redirects to vidfast.vc.
+        function hostBrand(host) {
+            const labels = host.split('.');
+            return labels.length >= 2 ? labels[labels.length - 2] : host;
+        }
+        const sourceBrands = new Set(sourceHosts.map(hostBrand));
+
+        function isFromSourceHost(origin) {
+            try {
+                return sourceBrands.has(hostBrand(new URL(origin).hostname.toLowerCase()));
+            } catch (e) {
+                return false;
+            }
+        }
+
+        window.addEventListener('message', (event) => {
+            if (!isFromSourceHost(event.origin)) return;
+            let message = event.data;
+            if (typeof message === 'string') {
+                try { message = JSON.parse(message); } catch (e) { return; }
+            }
+            if (!message || message.type !== 'PLAYER_EVENT' || !message.data) return;
+
+            const data = message.data;
+            const time = Number(data.currentTime);
+            const duration = Number(data.duration);
+            hasRealPlayerEvents = true;
+            if (Number.isFinite(time) && time >= 0) currentProgress = time;
+            if (Number.isFinite(duration) && duration > 0) videoDuration = duration;
+
+            // The video's clock is running, so this source really plays this title
+            if (data.event === 'timeupdate' && time > 1 && currentSourceIndex >= 0
+                && viewerVerdict(currentSourceIndex) !== 'works'
+                && hostBrand(new URL(event.origin).hostname.toLowerCase()) === hostBrand(sourceHost(currentSourceIndex))) {
+                recordVerdict(currentSourceIndex, 'works');
+            }
+
+            switch (data.event) {
+                case 'play':
+                    isPaused = false;
+                    hideLoading();
+                    showControls();
+                    break;
+                case 'pause':
+                    isPaused = true;
+                    showControls();
+                    saveProgress();
+                    break;
+                case 'seeked':
+                    saveProgress();
+                    break;
+                case 'ended':
+                    if (videoDuration) currentProgress = videoDuration;
+                    saveProgress();
+                    break;
+                case 'timeupdate':
+                    if (Date.now() - lastSavedAt > 15000) saveProgress();
+                    break;
+            }
         });
-        
-        // Show controls initially
-        showControls();
-        
-        // Simulate video progress tracking (since iframe blocks direct access)
-        function startProgressTracking() {
+
+        // Sources that send no events: estimate from the time the page has been open
+        function startFallbackTracking() {
             setInterval(() => {
-                currentProgress = (Date.now() - playbackStartTime) / 1000; // seconds
-                
-                // Save progress every 10 seconds
-                if (Math.floor(currentProgress) % 10 === 0) {
-                    saveProgress();
-                }
-                
-                // Auto-mark as watched when reaching 95% completion
-                const progressPercent = (currentProgress / videoDuration) * 100;
-                if (progressPercent >= 95 && !window.hasAutoMarkedWatched) {
-                    window.hasAutoMarkedWatched = true;
-                    // Force save progress to trigger auto-mark
-                    saveProgress();
-                }
+                if (hasRealPlayerEvents) return;
+                currentProgress = (Date.now() - playbackStartTime) / 1000;
+                if (Date.now() - lastSavedAt > 15000) saveProgress();
             }, 1000);
         }
-        
 
-        
+        function estimatedDuration() {
+            return videoDuration || (videoType === 'movie' ? 7200 : 2700);
+        }
+
+        // ---- Progress -----------------------------------------------------------
         function saveProgress() {
+            // Never save before we know where playback starts: a fresh page at 0:05
+            // would overwrite the saved position and drop the title from Continue Watching
+            if (!progressReady) return;
+            // Right after resuming, a source may report 0:00 before it reaches the resume point
+            if (Date.now() < resumeFloorUntil && currentProgress < resumeFloor - 30) return;
+            lastSavedAt = Date.now();
             const progressData = {
                 type: videoType === 'episode' ? 'series' : videoType,
                 id: imdbId,
@@ -224,134 +372,163 @@
                 tmdb_id: tmdbId,
                 title: videoTitle,
                 progress: Math.floor(currentProgress),
-                duration: Math.floor(videoDuration || 3600)
+                duration: Math.floor(estimatedDuration())
             };
-            
-            // Add episode info for series
-            if (videoType === 'episode' && typeof season !== 'undefined' && typeof episode !== 'undefined') {
+
+            if (videoType === 'episode' && season !== null && episode !== null) {
                 progressData.season = season;
                 progressData.episode = episode;
             }
-            
+
             fetch('/api/watch_progress', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(progressData)
+                body: JSON.stringify(progressData),
+                keepalive: true
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    console.log('Progress saved:', data.progress_percent + '%');
-                    
-                    // Show notification when auto-marked as watched
-                    if (data.is_completed && !window.hasShownWatchedNotification) {
-                        window.hasShownWatchedNotification = true;
-                        showToast('✓ Automatically marked as watched');
-                        console.log('Auto-marked as watched!');
-                        
-                        // Show the watched badge
-                        const badge = document.getElementById('watchedBadge');
-                        if (badge) {
-                            badge.style.display = 'inline';
-                            badge.style.marginLeft = '8px';
-                            badge.style.padding = '2px 8px';
-                            badge.style.backgroundColor = '#46d369';
-                            badge.style.color = '#000';
-                            badge.style.borderRadius = '4px';
-                            badge.style.fontSize = '12px';
-                            badge.style.fontWeight = 'bold';
-                        }
-                    }
+                if (data.success && data.is_completed && !window.hasShownWatchedNotification) {
+                    window.hasShownWatchedNotification = true;
+                    showToast('✓ Automatically marked as watched');
+                    showWatchedBadge();
                 }
             })
             .catch(err => console.log('Failed to save progress:', err));
         }
-        
-        // Load saved progress on page load
+
+        function showWatchedBadge() {
+            const badge = document.getElementById('watchedBadge');
+            if (badge) badge.hidden = false;
+        }
+
+        // Playback (and saving) starts from here: the resume point, or 0
+        function startTrackingFrom(seconds) {
+            currentProgress = seconds;
+            playbackStartTime = Date.now() - seconds * 1000;
+            resumeFloor = seconds;
+            resumeFloorUntil = seconds > 0 ? Date.now() + 60000 : 0;
+            progressReady = true;
+        }
+
         function loadSavedProgress() {
+            // A Continue Watching card already told us where to start
+            if (resumeFromUrl > 0) return;
+
             // Progress is saved under the IMDB id (see saveProgress), so look it up the same way
             let url = `/api/watch_progress/${videoType === 'episode' ? 'series' : videoType}/${imdbId}`;
-            
-            // Add episode params for series
-            if (videoType === 'episode' && typeof season !== 'undefined' && typeof episode !== 'undefined') {
+            if (videoType === 'episode' && season !== null && episode !== null) {
                 url += `?season=${season}&episode=${episode}`;
             }
-            
+
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success && data.progress && data.progress.progress_seconds > 0) {
-                        const savedProgress = data.progress;
-                        const progressPercent = savedProgress.progress_percent;
-                        
-                        // Only resume if not completed and progress is significant (>5% but <95%)
-                        if (!savedProgress.is_completed && progressPercent > 5 && progressPercent < 95) {
-                            const minutes = Math.floor(savedProgress.progress_seconds / 60);
-                            const seconds = savedProgress.progress_seconds % 60;
-                            const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
-                            
-                            showResumePrompt(savedProgress.progress_seconds, timeStr, progressPercent);
-                        }
+                    const saved = data.success && data.progress;
+                    // Only offer to resume if not completed and progress is significant (>5% but <95%)
+                    if (saved && saved.progress_seconds > 0 && !saved.is_completed
+                        && saved.progress_percent > 5 && saved.progress_percent < 95) {
+                        showResumePrompt(saved.progress_seconds, saved.progress_percent);
+                    } else {
+                        startTrackingFrom(0);
                     }
                 })
-                .catch(err => console.log('Failed to load progress:', err));
+                .catch(err => {
+                    console.log('Failed to load progress:', err);
+                    startTrackingFrom(0);
+                });
         }
-        
-        function showResumePrompt(progressSeconds, timeStr, progressPercent) {
+
+        function formatTime(seconds) {
+            seconds = Math.max(0, Math.floor(seconds));
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            return h > 0
+                ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+                : `${m}:${String(s).padStart(2, '0')}`;
+        }
+
+        function showResumePrompt(progressSeconds, progressPercent) {
             const prompt = document.createElement('div');
             prompt.className = 'resume-prompt';
             prompt.innerHTML = `
                 <div class="resume-content">
-                    <p>Resume from ${timeStr}? (${progressPercent.toFixed(0)}% watched)</p>
+                    <p>Resume from ${formatTime(progressSeconds)}? (${progressPercent.toFixed(0)}% watched)</p>
                     <div class="resume-buttons">
-                        <button onclick="resumePlayback(${progressSeconds})" class="btn-resume">Resume</button>
-                        <button onclick="dismissResumePrompt()" class="btn-start-over">Start Over</button>
+                        <button onclick="resumePlayback(${Math.floor(progressSeconds)})" class="btn-resume">Resume</button>
+                        <button onclick="startOver()" class="btn-start-over">Start Over</button>
                     </div>
                 </div>
             `;
             document.body.appendChild(prompt);
-            
             setTimeout(() => prompt.classList.add('show'), 100);
+            // No answer after 20 seconds: the viewer is watching from the start
+            resumePromptTimer = setTimeout(startOver, 20000);
         }
-        
-        window.resumePlayback = function(seconds) {
-            // Try to set the iframe's video position
-            // This works with some embed players that support URL parameters
-            const iframe = document.querySelector('iframe');
-            if (iframe && iframe.src) {
-                const url = new URL(iframe.src);
-                url.searchParams.set('t', seconds);
-                iframe.src = url.toString();
+
+        // Sources that can open at a given second (startAt): see prepareSourceUrl
+        function supportsStartAt(index) {
+            const src = embedSources[index];
+            return Boolean(src) && prepareSourceUrl(src, 0) !== src;
+        }
+
+        // Resume at `seconds`, moving to a source that can open there if the current one can't
+        async function resumeAt(seconds) {
+            startTrackingFrom(seconds);
+            pendingStartAt = seconds;
+            if (currentSourceIndex < 0) return;  // selectWorkingSource applies pendingStartAt
+
+            let target = currentSourceIndex;
+            if (!supportsStartAt(target)) {
+                for (let i = 0; i < embedSources.length; i++) {
+                    if (supportsStartAt(i) && await checkSource(i)) { target = i; break; }
+                }
             }
+            showLoading(target + 1);
+            loadSource(target, seconds);
+            announceResume(target, seconds);
+            setTimeout(hideLoading, 8000);
+        }
+
+        function announceResume(index, seconds) {
+            if (seconds <= 0) return;
+            showToast(supportsStartAt(index)
+                ? `Resuming from ${formatTime(seconds)}`
+                : `Source ${index + 1} can't jump ahead: skip to ${formatTime(seconds)}`);
+        }
+
+        window.resumePlayback = function(seconds) {
             dismissResumePrompt();
-            showToast('Resuming playback...');
+            resumeAt(seconds);
         };
-        
+
+        window.startOver = function() {
+            dismissResumePrompt();
+            if (!progressReady) startTrackingFrom(0);
+        };
+
         window.dismissResumePrompt = function() {
+            clearTimeout(resumePromptTimer);
             const prompt = document.querySelector('.resume-prompt');
             if (prompt) {
                 prompt.classList.remove('show');
                 setTimeout(() => prompt.remove(), 300);
             }
         };
-        
-        // Load progress when page loads
-        window.addEventListener('load', loadSavedProgress);
-        
+
         function showToast(message) {
             const toast = document.createElement('div');
             toast.className = 'toast-notification';
             toast.textContent = message;
             document.body.appendChild(toast);
-            
             setTimeout(() => toast.classList.add('show'), 100);
             setTimeout(() => {
                 toast.classList.remove('show');
                 setTimeout(() => toast.remove(), 300);
             }, 2000);
         }
-        
-        // Mark as watched function
+
         window.markAsWatched = function() {
             const data = {
                 type: videoType === 'episode' ? 'series' : videoType,
@@ -359,135 +536,61 @@
                 tmdb_id: tmdbId,
                 title: seriesTitle
             };
-            
-            if (videoType === 'episode' && typeof season !== 'undefined' && typeof episode !== 'undefined') {
+            if (videoType === 'episode' && season !== null && episode !== null) {
                 data.season = season;
                 data.episode = episode;
             }
-            
             fetch('/api/mark_watched', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             })
             .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showToast('Marked as watched ✓');
-                }
-            })
+            .then(data => { if (data.success) showToast('Marked as watched ✓'); })
             .catch(err => console.log('Failed to mark as watched:', err));
         };
-        
-        // Handle keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'f' || e.key === 'F') {
-                if (document.fullscreenElement) {
-                    document.exitFullscreen();
-                } else {
-                    document.documentElement.requestFullscreen();
-                }
-            }
-            if (e.key === 'Escape') {
-                showControls();
-            }
 
-        });
-        
-
-
-        // Check if item is already watched
         async function checkWatchedStatus() {
             try {
                 let url = `/api/watched_status/${videoType === 'episode' ? 'series' : videoType}/${imdbId}`;
-                
-                // Add episode params for series
-                if (videoType === 'episode' && typeof season !== 'undefined' && typeof episode !== 'undefined') {
+                if (videoType === 'episode' && season !== null && episode !== null) {
                     url += `?season=${season}&episode=${episode}`;
                 }
-                
                 const response = await fetch(url);
                 const data = await response.json();
-                
                 if (data.success && data.is_watched) {
-                    const badge = document.getElementById('watchedBadge');
-                    if (badge) {
-                        badge.style.display = 'inline';
-                        badge.style.marginLeft = '8px';
-                        badge.style.padding = '2px 8px';
-                        badge.style.backgroundColor = '#46d369';
-                        badge.style.color = '#000';
-                        badge.style.borderRadius = '4px';
-                        badge.style.fontSize = '12px';
-                        badge.style.fontWeight = 'bold';
-                    }
-                    window.hasAutoMarkedWatched = true; // Already watched, don't show notification again
+                    showWatchedBadge();
+                    window.hasShownWatchedNotification = true; // already watched, no toast
                 }
             } catch (err) {
                 console.log('Failed to check watched status:', err);
             }
         }
-        
-        // Start tracking when page loads
-        window.addEventListener('load', () => {
-            // Estimate video duration (for movies ~7200s, series ~2700s)
-            videoDuration = videoType === 'movie' ? 7200 : 2700;
-            
-            // Check if already watched
-            checkWatchedStatus();
-            
-            startProgressTracking();
-            
-            // Save initial view
-            setTimeout(() => saveProgress(), 5000);
-            
-            // Probe embed sources and set the iframe to the first one that allows framing
-            selectWorkingSource(embedSources).then(chosen => {
-                if (chosen) {
-                    const iframe = document.getElementById('videoIframe');
-                    iframe.src = chosen;
-                } else {
-                    // No working source found — show error message
-                    showError();
-                }
-            }).catch(err => {
-                console.error('Error selecting embed source', err);
-                showError();
-            });
 
-            // Auto-hide loading after 10 seconds if iframe hasn't signaled load
-            setTimeout(() => {
-                hideLoading();
-            }, 10000);
+        // ---- Fullscreen and keyboard --------------------------------------------
+        async function toggleFullscreen() {
+            try {
+                if (document.fullscreenElement) {
+                    await document.exitFullscreen();
+                } else {
+                    await document.getElementById('playerContainer').requestFullscreen();
+                }
+            } catch (err) {
+                console.warn('Fullscreen unavailable:', err);
+            }
+        }
+
+        // Space, arrows and M belong to the source's player once it has focus;
+        // this page can only handle fullscreen and the menu.
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+            if (e.key === 'Escape') {
+                showControls();
+                hideSourceMenu();
+            }
         });
 
-        // Try each source sequentially by asking the server whether the URL allows framing.
-        // Returns a promise that resolves to the first URL that allows framing or null.
-        async function selectWorkingSource(sources) {
-            if (!sources || !sources.length) return null;
-            for (let i = 0; i < sources.length; i++) {
-                const src = sources[i];
-                try {
-                    showLoading(i + 1);
-                    const resp = await fetch('/embed_check', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ url: src })
-                    });
-                    const json = await resp.json();
-                    if (json.allows) {
-                        currentSourceIndex = i;
-                        hideSourceMenu();
-                        return src;
-                    }
-                } catch (e) {
-                    console.warn('Embed check failed for', src, e);
-                }
-            }
-            return null;
-        }
-        
-        // Functions for handling video loading states
+        // ---- Loading states -----------------------------------------------------
         function hideLoading() {
             const loader = document.getElementById('loadingIndicator');
             if (loader) {
@@ -495,19 +598,19 @@
                 setTimeout(() => loader.style.display = 'none', 300);
             }
         }
-        
+
         function showError() {
             const loader = document.getElementById('loadingIndicator');
             const error = document.getElementById('errorMessage');
             if (loader) loader.style.display = 'none';
             if (error) error.style.display = 'flex';
         }
-        
+
         function hideError() {
             const error = document.getElementById('errorMessage');
             if (error) error.style.display = 'none';
         }
-        
+
         function showLoading(sourceNum) {
             const loader = document.getElementById('loadingIndicator');
             const loadingSource = document.getElementById('loadingSource');
@@ -516,49 +619,230 @@
                 loader.style.display = 'flex';
                 loader.style.opacity = '1';
             }
-            if (loadingSource) {
-                loadingSource.textContent = `Trying source ${sourceNum}...`;
-            }
+            if (loadingSource) loadingSource.textContent = `Trying source ${sourceNum}...`;
         }
-        
-        // Save progress before leaving
-        window.addEventListener('beforeunload', saveProgress);
-        
-        // Source switching functionality
+
+        // ---- Source status ------------------------------------------------------
+        // The server can only tell whether a site refuses to be framed. It cannot tell
+        // whether the site has this video: vixsrc and vidsrc.su answer 200 even for a
+        // title they don't have. So "Worked" and "Not working" come from this browser
+        // (real playback events, and the viewer's own report), remembered per title.
+        const STATUS_TEXT = {
+            checking: 'Checking…', works: 'Worked', broken: 'Not working',
+            blocked: "Can't embed", unknown: ''
+        };
+        const sourceChecks = new Map();  // index -> Promise<boolean usable>, one check per source
+        const blockedSources = new Set();
+        const historyKey = `homeflix:sources:${imdbId}:${season ?? 0}:${episode ?? 0}`;
+
+        function sourceHost(index) {
+            try { return new URL(embedSources[index]).hostname.toLowerCase(); } catch (e) { return String(index); }
+        }
+
+        function readHistory() {
+            try { return JSON.parse(localStorage.getItem(historyKey)) || {}; } catch (e) { return {}; }
+        }
+
+        // 'works' | 'broken' | null, for this title
+        function viewerVerdict(index) {
+            return readHistory()[sourceHost(index)] || null;
+        }
+
+        function recordVerdict(index, verdict) {
+            const history = readHistory();
+            history[sourceHost(index)] = verdict;
+            try { localStorage.setItem(historyKey, JSON.stringify(history)); } catch (e) { /* private mode */ }
+            refreshSourceStatus(index);
+        }
+
+        function setSourceStatus(index, status) {
+            const el = document.querySelector(`.source-option[data-index="${index}"] .source-status`);
+            if (!el) return;
+            el.dataset.status = status;
+            el.querySelector('.status-text').textContent = STATUS_TEXT[status] || '';
+        }
+
+        function refreshSourceStatus(index, checking = false) {
+            setSourceStatus(index, viewerVerdict(index)
+                || (blockedSources.has(index) ? 'blocked' : checking ? 'checking' : 'unknown'));
+        }
+
+        // Ask the server whether the source refuses being shown in a frame.
+        // Only an explicit refusal rules a source out: an error or timeout says more
+        // about the server's network than about the source, so it is still tried.
+        function checkSource(index) {
+            if (!sourceChecks.has(index)) {
+                refreshSourceStatus(index, true);
+                const check = fetch('/embed_check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: embedSources[index] })
+                })
+                    .then(resp => (resp.ok ? resp.json() : null))
+                    .then(json => {
+                        if (json && json.allows === false) blockedSources.add(index);
+                        return !blockedSources.has(index);
+                    })
+                    .catch(e => {
+                        console.warn('Embed check failed for', embedSources[index], e);
+                        return true;
+                    })
+                    .then(usable => {
+                        refreshSourceStatus(index);
+                        return usable;
+                    });
+                sourceChecks.set(index, check);
+            }
+            return sourceChecks.get(index);
+        }
+
+        // Order to try sources in: ones that worked here first, ones the viewer marked
+        // as not working last; when resuming, ones that can open at a given second first.
+        function sourceTryOrder() {
+            const rank = (i) => {
+                const verdict = viewerVerdict(i);
+                if (verdict === 'broken') return 10;
+                return (verdict === 'works' ? 0 : 2) + (resumeFromUrl > 0 && !supportsStartAt(i) ? 1 : 0);
+            };
+            return embedSources.map((_, i) => i).sort((a, b) => rank(a) - rank(b) || a - b);
+        }
+
+        // Return the first source in try order that isn't refused by the site
+        async function selectWorkingSource() {
+            for (const i of sourceTryOrder()) {
+                showLoading(i + 1);
+                if (await checkSource(i)) return i;
+            }
+            return -1;
+        }
+
+        // "Not working, try next": remember it for this title and move on
+        window.reportSourceBroken = async function() {
+            if (currentSourceIndex < 0) return;
+            const broken = currentSourceIndex;
+            recordVerdict(broken, 'broken');
+            const order = sourceTryOrder();
+            // The sources after this one in try order, then the ones before it
+            const start = order.indexOf(broken);
+            const candidates = [...order.slice(start + 1), ...order.slice(0, start)]
+                .filter(i => viewerVerdict(i) !== 'broken');
+            for (const i of candidates) {
+                if (await checkSource(i)) {
+                    switchSource(i);
+                    return;
+                }
+            }
+            showToast('No other source left to try');
+        };
+
+        function updateReportButton() {
+            const button = document.getElementById('reportSourceButton');
+            if (!button) return;
+            button.hidden = currentSourceIndex < 0;
+            const label = document.getElementById('reportSourceTitle');
+            if (label) label.textContent = `Source ${currentSourceIndex + 1} not working?`;
+        }
+
+        // Tag the sources whose own player we theme like Netflix (see prepareSourceUrl)
+        function markThemedSources() {
+            embedSources.forEach((src, index) => {
+                if (prepareSourceUrl(src, 0) === src) return;
+                const tag = document.querySelector(`.source-option[data-index="${index}"] .source-tag-themed`);
+                if (tag) tag.hidden = false;
+            });
+        }
+
+        // ---- Source menu --------------------------------------------------------
+        let menuOpener = null;
+
         function showSourceMenu() {
             const menu = document.getElementById('sourceMenu');
-            menu.style.display = 'flex';
-            setTimeout(() => menu.classList.add('show'), 10);
+            const backdrop = document.getElementById('sourceBackdrop');
+            if (menu.classList.contains('show')) return;
+            menuOpener = document.activeElement;
+            menu.hidden = false;
+            backdrop.hidden = false;
+            requestAnimationFrame(() => {
+                menu.classList.add('show');
+                backdrop.classList.add('show');
+            });
+            showControls();
+            // Check the remaining sources in the background so every row shows a status
+            embedSources.forEach((_, index) => checkSource(index));
+            (menu.querySelector('.source-option.active') || menu.querySelector('.source-option'))?.focus();
         }
-        
+
         function hideSourceMenu() {
             const menu = document.getElementById('sourceMenu');
+            const backdrop = document.getElementById('sourceBackdrop');
+            if (!menu.classList.contains('show')) return;
             menu.classList.remove('show');
-            setTimeout(() => menu.style.display = 'none', 300);
+            backdrop.classList.remove('show');
+            setTimeout(() => {
+                if (menu.classList.contains('show')) return;
+                menu.hidden = true;
+                backdrop.hidden = true;
+            }, 250);
+            if (menuOpener && typeof menuOpener.focus === 'function') menuOpener.focus();
+            showControls();
         }
-        
-        function switchSource(sourceUrl, button) {
-            // Update active button
-            document.querySelectorAll('.source-option').forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            
-            // Get source number
-            const sourceNum = button.textContent.match(/\d+/)[0];
-            showLoading(sourceNum);
-            
-            // Switch iframe source
-            const iframe = document.getElementById('videoIframe');
-            iframe.src = sourceUrl;
-            
-            // Show notification
-            showToast('Switching video source...');
-            
-            // Hide menu after short delay
-            setTimeout(hideSourceMenu, 500);
-            
-            // Auto-hide loading after timeout
-            setTimeout(() => hideLoading(), 8000);
+
+        // Up/down arrows move between sources while the menu is open
+        document.getElementById('sourceMenu').addEventListener('keydown', (e) => {
+            if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+            const options = [...document.querySelectorAll('.source-option')];
+            const current = options.indexOf(document.activeElement);
+            const next = e.key === 'ArrowDown'
+                ? Math.min(options.length - 1, current + 1)
+                : Math.max(0, current - 1);
+            options[next]?.focus();
+            e.preventDefault();
+        });
+
+        function switchSource(index) {
+            showLoading(index + 1);
+            // Keep the viewer's place when the new source supports startAt
+            const startAt = hasRealPlayerEvents ? currentProgress : pendingStartAt;
+            loadSource(index, startAt);
+            showToast(`Switching to Source ${index + 1}…`);
+            setTimeout(hideSourceMenu, 300);
+            setTimeout(hideLoading, 8000);
         }
+
+        // ---- Start --------------------------------------------------------------
+        window.addEventListener('beforeunload', saveProgress);
+
+        window.addEventListener('load', () => {
+            markThemedSources();
+            showControls();
+            checkWatchedStatus();
+            if (resumeFromUrl > 0) {
+                startTrackingFrom(resumeFromUrl);
+                pendingStartAt = resumeFromUrl;
+            }
+            loadSavedProgress();
+            startFallbackTracking();
+            setTimeout(saveProgress, 5000);  // record the view (skipped until the start is known)
+
+            embedSources.forEach((_, index) => refreshSourceStatus(index));
+            selectWorkingSource().then(index => {
+                if (index < 0) {
+                    showError();
+                } else if (pendingStartAt > 0) {
+                    // Resuming (from the card, or Resume clicked while sources were checked)
+                    currentSourceIndex = index;
+                    resumeAt(pendingStartAt);
+                } else {
+                    loadSource(index, 0);
+                }
+            }).catch(err => {
+                console.error('Error selecting embed source', err);
+                showError();
+            });
+
+            // Hide the loader after 10 seconds if the iframe never signals load
+            setTimeout(hideLoading, 10000);
+        });
     </script>
 </body>
 </html>

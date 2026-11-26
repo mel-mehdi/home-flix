@@ -86,7 +86,7 @@ class PaginationConfig:
     SEARCH_PER_PAGE: int = 15
     MAX_PER_PAGE: int = 50
     TRENDING_LIMIT: int = 18
-    TOP_LIST_SIZE: int = 250  # Titles on the /top page, per tab
+    TOP_LIST_SIZE: int = 500  # Titles on the /top page, per tab
 
 
 # Global config instances
