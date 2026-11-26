@@ -286,29 +286,27 @@
         // Clicks inside the source's iframe never reach this page. The first click
         // only shows up as the window losing focus to the iframe, so for a moment
         // after it a transparent layer covers the video to catch a second click.
-        // Otherwise focus stays in the source's player, so its own keys (space,
-        // arrows...) keep working; F and the next double-click only work here once
-        // focus is back on this page (after a double-click or a click outside the video).
+        // Focus then comes back to this page, so F and the next double-click work.
         const DOUBLE_CLICK_MS = 400;
         let catcherTimeout;
-        function closeDblclickCatcher() {
+        function closeDblclickCatcher(refocus) {
             clearTimeout(catcherTimeout);
             document.getElementById('dblclickCatcher').classList.remove('active');
+            if (!refocus) return;
+            window.focus();
+            document.getElementById('playerContainer').focus({ preventScroll: true });
         }
         window.addEventListener('blur', () => {
             setTimeout(() => {
                 if (document.activeElement !== document.getElementById('videoIframe')) return;
                 document.getElementById('dblclickCatcher').classList.add('active');
                 clearTimeout(catcherTimeout);
-                catcherTimeout = setTimeout(closeDblclickCatcher, DOUBLE_CLICK_MS);
+                catcherTimeout = setTimeout(() => closeDblclickCatcher(true), DOUBLE_CLICK_MS);
             }, 0);
         });
         document.getElementById('dblclickCatcher').addEventListener('mousedown', (e) => {
             e.preventDefault();
-            closeDblclickCatcher();
-            // Bring focus back to this page so F can leave fullscreen
-            window.focus();
-            document.getElementById('playerContainer').focus({ preventScroll: true });
+            closeDblclickCatcher(true);
             toggleFullscreen();
         });
 
@@ -614,7 +612,8 @@
         }
 
         // Space, arrows and M belong to the source's player while it has focus;
-        // this page handles F (fullscreen) and Escape (menu) when it has focus.
+        // focus returns here shortly after a click into it (see Double-click),
+        // so this page handles F (fullscreen) and Escape (menu).
         document.addEventListener('keydown', function(e) {
             if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
                 e.preventDefault();
