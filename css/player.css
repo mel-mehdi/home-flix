@@ -80,6 +80,28 @@ textarea {
     pointer-events: auto; /* Allow iframe interaction */
 }
 
+/* Transparent layer over the video, switched on only for a moment after a
+   click into the source's player, to catch the second click of a double-click.
+   It leaves the source's control bar at the bottom uncovered. */
+.dblclick-catcher {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 90px;
+    z-index: 2;
+    display: none;
+    background: transparent;
+}
+
+.dblclick-catcher.active {
+    display: block;
+}
+
+#playerContainer:focus {
+    outline: none;
+}
+
 /* Hide cursor on the video wrapper when hovering */
 .video-wrapper:not(:hover) {
     cursor: none;

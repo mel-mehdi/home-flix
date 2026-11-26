@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="player-container" id="playerContainer">
+    <div class="player-container" id="playerContainer" tabindex="-1">
         <div class="video-wrapper">
             <!-- Loading Indicator -->
             <div class="loading-indicator" id="loadingIndicator">
@@ -46,6 +46,9 @@
                     referrerpolicy="origin"
                     onload="typeof hideLoading === 'function' && hideLoading()"
                     onerror="typeof showError === 'function' && showError()"></iframe>
+
+            <!-- Catches the second click of a double-click on the video (see dblclickCatcher in the script) -->
+            <div class="dblclick-catcher" id="dblclickCatcher" aria-hidden="true"></div>
 
             <!-- Netflix-style top bar, the same over every source.
                  Playback controls stay inside each source's own player: none of the
@@ -278,6 +281,36 @@
         document.addEventListener('mouseleave', hideControls);
         // Clicking into the source's player moves focus into the iframe
         window.addEventListener('blur', showControls);
+
+        // ---- Double-click for fullscreen -----------------------------------------
+        // Clicks inside the source's iframe never reach this page. The first click
+        // only shows up as the window losing focus to the iframe, so for a moment
+        // after it a transparent layer covers the video to catch a second click.
+        // Otherwise focus stays in the source's player, so its own keys (space,
+        // arrows...) keep working; F and the next double-click only work here once
+        // focus is back on this page (after a double-click or a click outside the video).
+        const DOUBLE_CLICK_MS = 400;
+        let catcherTimeout;
+        function closeDblclickCatcher() {
+            clearTimeout(catcherTimeout);
+            document.getElementById('dblclickCatcher').classList.remove('active');
+        }
+        window.addEventListener('blur', () => {
+            setTimeout(() => {
+                if (document.activeElement !== document.getElementById('videoIframe')) return;
+                document.getElementById('dblclickCatcher').classList.add('active');
+                clearTimeout(catcherTimeout);
+                catcherTimeout = setTimeout(closeDblclickCatcher, DOUBLE_CLICK_MS);
+            }, 0);
+        });
+        document.getElementById('dblclickCatcher').addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            closeDblclickCatcher();
+            // Bring focus back to this page so F can leave fullscreen
+            window.focus();
+            document.getElementById('playerContainer').focus({ preventScroll: true });
+            toggleFullscreen();
+        });
 
         // ---- Events from the source's player ------------------------------------
         // VidLink, VixSrc and VidFast post { type: 'PLAYER_EVENT', data: { event,
@@ -580,10 +613,13 @@
             }
         }
 
-        // Space, arrows and M belong to the source's player once it has focus;
-        // this page can only handle fullscreen and the menu.
+        // Space, arrows and M belong to the source's player while it has focus;
+        // this page handles F (fullscreen) and Escape (menu) when it has focus.
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+            if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                e.preventDefault();
+                toggleFullscreen();
+            }
             if (e.key === 'Escape') {
                 showControls();
                 hideSourceMenu();
